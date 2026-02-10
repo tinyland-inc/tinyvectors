@@ -1,16 +1,17 @@
 {
-  "name": "tinyvectors",
-  "version": "1.0.0-alpha.1",
+  "name": "@tinyland-inc/tinyvectors",
+  "version": "0.1.0",
   "description": "Animated vector blob backgrounds with physics simulation for Svelte 5",
   "type": "module",
-  "license": "MIT",
+  "license": "Zlib AND LicenseRef-Tinyland-Proprietary",
   "author": {
     "name": "Jess Sullivan",
     "email": "jess@sulliwood.org"
   },
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/tinyland/tinyvectors"
+    "url": "https://gitlab.com/tinyland/tinyland.dev",
+    "directory": "packages/tinyvectors"
   },
   "keywords": [
     "svelte",
@@ -81,6 +82,6 @@
     "svelte-check": "^4.0.0",
     "typescript": "^5.0.0",
     "vite": "^6.0.0",
-    "vitest": "^2.1.0"
+    "vitest": "^4.0.0"
   }
 }

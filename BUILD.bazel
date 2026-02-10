@@ -1,0 +1,173 @@
+"""
+BUILD.bazel for @tinyland-inc/tinyvectors.
+
+Hybrid build for a package containing both pure TypeScript (core/, motion/, themes/,
+workers/) and Svelte components (svelte/).
+
+  Standalone: cd packages/tinyvectors && pnpm build (uses vite build)
+  Monorepo:   bazel build //packages/tinyvectors/...
+
+Build strategy:
+  - js_run_binary wrapping `vite build` for the full package (handles .svelte
+    components, Svelte runes, Web Workers, and tree-shaking in a single pass)
+  - svelte-check for type validation (covers .svelte + .ts files)
+  - vitest for PBT tests (property-based tests using fast-check)
+
+NOTE: The PBT tests depend on fast-check ^3.23.0 (package-local) while the
+monorepo root has fast-check ^4. This version mismatch is tracked but not yet
+resolved -- pnpm workspace hoisting handles it for now.
+"""
+
+load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary", "js_test")
+load("@aspect_rules_js//npm:defs.bzl", "npm_package")
+load("@npm//:defs.bzl", "npm_link_all_packages")
+
+# =============================================================================
+# npm link - makes node_modules available for this package
+# =============================================================================
+
+npm_link_all_packages(name = "node_modules")
+
+# =============================================================================
+# Vite library build
+#
+# Uses `vite build` to compile the full package including:
+#   - Pure TypeScript (core/, motion/, themes/, workers/)
+#   - Svelte 5 components with runes mode (svelte/)
+#   - Web Worker bundling (workers/physics.worker.ts)
+#   - ES module output with preserveModules for tree-shaking
+#
+# This is preferred over ts_project alone because:
+#   1. Svelte components require the vite-plugin-svelte compiler
+#   2. Web Workers need special bundling (not plain tsc output)
+#   3. The existing vite.config.ts handles all entry points correctly
+# =============================================================================
+
+js_run_binary(
+    name = "tinyvectors_build",
+    tool = ":node_modules/vite/bin/vite.js",
+    srcs = glob(
+        [
+            "src/**/*.ts",
+            "src/**/*.svelte",
+        ],
+        exclude = [
+            "src/**/*.test.ts",
+            "src/**/*.spec.ts",
+        ],
+    ) + [
+        "package.json",
+        "tsconfig.json",
+        "vite.config.ts",
+        ":node_modules",
+        "//:tsconfig_base",
+    ],
+    args = [
+        "build",
+    ],
+    out_dirs = ["dist"],
+    visibility = ["//visibility:public"],
+)
+
+js_library(
+    name = "tinyvectors",
+    srcs = [":tinyvectors_build"],
+    visibility = ["//visibility:public"],
+)
+
+# =============================================================================
+# npm package target
+#
+# Packages the compiled output into a publishable npm package structure
+# matching the "exports" field in package.json.
+# =============================================================================
+
+npm_package(
+    name = "pkg",
+    srcs = [
+        "package.json",
+        "LICENSE",
+        ":tinyvectors",
+    ],
+    package = "@tinyland-inc/tinyvectors",
+    version = "0.1.0",
+    visibility = ["//visibility:public"],
+)
+
+# =============================================================================
+# Test targets
+#
+# Runs property-based tests (PBT) using vitest + fast-check.
+# Tests are in tests/pbt/ and include both .test.ts and helper .ts files
+# (arbitraries). The test lib compiles all TS under tests/ so helpers are
+# available at runtime.
+#
+# NOTE: Tests import directly from src/ (not dist/), so they depend on the
+# source TypeScript files rather than the built output. Vitest handles
+# transpilation on the fly.
+# =============================================================================
+
+js_test(
+    name = "test",
+    data = glob([
+        "src/**/*.ts",
+        "tests/**/*.ts",
+    ]) + [
+        "package.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        ":node_modules",
+        ":node_modules/vitest",
+        ":node_modules/fast-check",
+        ":node_modules/@fast-check/vitest",
+    ],
+    entry_point = ":node_modules/vitest/vitest.mjs",
+    args = [
+        "run",
+        "--reporter=verbose",
+        "--config",
+        "$(rootpath vitest.config.ts)",
+    ],
+    log_level = "info",
+    visibility = ["//visibility:public"],
+)
+
+# =============================================================================
+# Typecheck target
+#
+# Uses svelte-check for type validation of .svelte and .ts files.
+# This is preferred over plain tsc for packages containing Svelte components,
+# as it understands .svelte file boundaries and runes syntax.
+# =============================================================================
+
+js_run_binary(
+    name = "typecheck",
+    tool = ":node_modules/svelte-check/bin/svelte-check",
+    srcs = glob([
+        "src/**/*.ts",
+        "src/**/*.svelte",
+    ]) + [
+        "tsconfig.json",
+        ":node_modules",
+        "//:tsconfig_base",
+    ],
+    args = [
+        "--tsconfig",
+        "tsconfig.json",
+    ],
+    visibility = ["//visibility:public"],
+)
+
+# =============================================================================
+# Exported files for downstream consumers
+# =============================================================================
+
+exports_files(
+    [
+        "package.json",
+        "tsconfig.json",
+        "vitest.config.ts",
+        "vite.config.ts",
+    ],
+    visibility = ["//visibility:public"],
+)
