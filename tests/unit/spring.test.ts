@@ -320,8 +320,8 @@ describe('SpringSystem', () => {
       const initialEnergy = dampedSystem.getKineticEnergy(velocities)
         + dampedSystem.getPotentialEnergy(points);
 
-      // Run many frames
-      for (let i = 0; i < 500; i++) {
+      // Run many frames (1500 iterations = 24s sim time for gentle damping)
+      for (let i = 0; i < 1500; i++) {
         dampedSystem.updateAllControlPoints(points, velocities, 0, 0.016);
       }
 
