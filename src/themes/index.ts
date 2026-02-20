@@ -2,6 +2,8 @@
  * Themes module - Color presets and CSS generation
  */
 
+import { THEME_PRESETS, type ThemePreset } from '../core/schema.js';
+
 export {
 	THEME_PRESETS,
 	TRANS_THEME,
@@ -16,8 +18,7 @@ export {
 /**
  * Get theme preset by name
  */
-export function getThemePreset(name: string): import('../core/schema.js').ThemePreset | undefined {
-	const { THEME_PRESETS } = require('../core/schema.js');
+export function getThemePreset(name: string): ThemePreset | undefined {
 	return THEME_PRESETS[name as keyof typeof THEME_PRESETS];
 }
 
@@ -25,7 +26,7 @@ export function getThemePreset(name: string): import('../core/schema.js').ThemeP
  * Generate CSS custom properties for a theme
  */
 export function generateThemeCSS(
-	theme: import('../core/schema.js').ThemePreset,
+	theme: ThemePreset,
 	prefix = '--vector-'
 ): string {
 	const lines: string[] = [':root {'];

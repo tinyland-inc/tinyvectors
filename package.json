@@ -61,7 +61,7 @@
     "**/*.css"
   ],
   "scripts": {
-    "build": "vite build",
+    "build": "vite build && tsc -p tsconfig.declarations.json",
     "dev": "vite --config vite.dev.config.ts",
     "dev:watch": "vite build --watch",
     "check": "svelte-check --tsconfig ./tsconfig.json",

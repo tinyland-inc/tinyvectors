@@ -9,12 +9,8 @@ export interface ScrollHandlerConfig {
 	maxForces?: number;
 }
 
-export interface PullForce {
-	strength: number;
-	time: number;
-	randomness: number;
-	explosive: boolean;
-}
+export type { PullForce } from '../core/types.js';
+import type { PullForce } from '../core/types.js';
 
 export class ScrollHandler {
 	private stickiness = 0;

@@ -6,6 +6,8 @@
  * for extracting TinyVectors into an independent npm package.
  */
 
+import type { ControlPoint, ControlPointVelocity, DeviceMotionData } from './types.js';
+
 // ============================================================================
 // CORE CONFIGURATION
 // ============================================================================
@@ -332,72 +334,8 @@ export interface PhysicsBlob extends RenderBlob {
 	repulsionStrength?: number;
 }
 
-/**
- * Control point for organic blob shape
- */
-export interface ControlPoint {
-	/** Current radius at this point */
-	radius: number;
-
-	/** Angle from center */
-	angle: number;
-
-	/** Target radius for animation */
-	targetRadius: number;
-
-	/** Base radius (rest position) */
-	baseRadius: number;
-
-	/** Pressure at this point */
-	pressure?: number;
-
-	/** Adhesion factor */
-	adhesion?: number;
-
-	/** Surface tension at point */
-	tension?: number;
-}
-
-/**
- * Velocity data for control point animation
- */
-export interface ControlPointVelocity {
-	/** Radial velocity */
-	radialVelocity: number;
-
-	/** Angular velocity */
-	angularVelocity: number;
-
-	/** Pressure change rate */
-	pressureVelocity?: number;
-}
-
-// ============================================================================
-// INPUT TYPES
-// ============================================================================
-
-/**
- * Device motion sensor data
- */
-export interface DeviceMotionData {
-	/** Rotation around Z axis (compass heading) */
-	alpha: number | null;
-
-	/** Front-to-back tilt */
-	beta: number | null;
-
-	/** Left-to-right tilt */
-	gamma: number | null;
-
-	/** Acceleration X (normalized -1 to 1) */
-	x?: number;
-
-	/** Acceleration Y (normalized -1 to 1) */
-	y?: number;
-
-	/** Acceleration Z (normalized -1 to 1) */
-	z?: number;
-}
+// Re-export types from types.ts (canonical source)
+export type { ControlPoint, ControlPointVelocity, DeviceMotionData };
 
 /**
  * Scroll input data
@@ -680,7 +618,11 @@ export function mergeConfig(override: TinyVectorsConfigOverride): TinyVectorsCon
 		version: '1.0.0',
 		core: { ...DEFAULT_CONFIG.core, ...override.core },
 		physics: { ...DEFAULT_CONFIG.physics, ...override.physics },
-		rendering: { ...DEFAULT_CONFIG.rendering, ...override.rendering },
+		rendering: {
+			...DEFAULT_CONFIG.rendering,
+			...override.rendering,
+			viewBox: { ...DEFAULT_CONFIG.rendering.viewBox, ...override.rendering?.viewBox },
+		},
 		theme: { ...DEFAULT_CONFIG.theme, ...override.theme },
 		features: { ...DEFAULT_CONFIG.features, ...override.features },
 	};
