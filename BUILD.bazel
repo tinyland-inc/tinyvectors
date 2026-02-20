@@ -1,5 +1,5 @@
 """
-BUILD.bazel for @tinyland-inc/tinyvectors.
+BUILD.bazel for @tummycrypt/tinyvectors.
 
 Hybrid build for a package containing both pure TypeScript (core/, motion/, themes/,
 workers/) and Svelte components (svelte/).
@@ -89,7 +89,7 @@ npm_package(
         "LICENSE",
         ":tinyvectors",
     ],
-    package = "@tinyland-inc/tinyvectors",
+    package = "@tummycrypt/tinyvectors",
     version = "0.1.0",
     visibility = ["//visibility:public"],
 )
