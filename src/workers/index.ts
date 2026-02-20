@@ -1,0 +1,5 @@
+/**
+ * Workers exports
+ */
+
+export type { BlobRenderData, WorkerInMessage, WorkerOutMessage } from './physics.worker.js';
