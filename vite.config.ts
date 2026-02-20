@@ -25,14 +25,7 @@ export default defineConfig({
 		},
 
 		rollupOptions: {
-			external: [
-				'svelte',
-				'svelte/animate',
-				'svelte/easing',
-				'svelte/internal',
-				'svelte/store',
-				'svelte/transition',
-			],
+			external: [/^svelte($|\/)/],
 			output: {
 				preserveModules: true,
 				preserveModulesRoot: 'src',
