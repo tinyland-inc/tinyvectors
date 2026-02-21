@@ -43,7 +43,7 @@ load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 
 js_run_binary(
     name = "tinyvectors_build",
-    tool = "//:node_modules/vite/bin/vite.js",
+    tool = "//:vite_bin",
     srcs = glob(
         [
             "src/**/*.ts",
@@ -58,7 +58,7 @@ js_run_binary(
         "tsconfig.json",
         "vite.config.ts",
         "//:node_modules",
-        "//:tsconfig_base",
+        "//packages:tsconfig_base",
     ],
     args = [
         "build",
@@ -119,7 +119,7 @@ js_test(
         "//:node_modules/fast-check",
         "//:node_modules/@fast-check/vitest",
     ],
-    entry_point = "//:node_modules/vitest/vitest.mjs",
+    entry_point = "//:vitest_bin",
     args = [
         "run",
         "--reporter=verbose",
@@ -140,14 +140,14 @@ js_test(
 
 js_run_binary(
     name = "typecheck",
-    tool = "//:node_modules/svelte-check/bin/svelte-check",
+    tool = "//:svelte_check_bin",
     srcs = glob([
         "src/**/*.ts",
         "src/**/*.svelte",
     ]) + [
         "tsconfig.json",
         "//:node_modules",
-        "//:tsconfig_base",
+        "//packages:tsconfig_base",
     ],
     args = [
         "--tsconfig",
