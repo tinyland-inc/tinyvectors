@@ -10,7 +10,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://gitlab.com/tinyland/tinyland.dev",
+    "url": "https://github.com/tinyland-inc/tinyland.dev",
     "directory": "packages/tinyvectors"
   },
   "keywords": [
