@@ -20,10 +20,13 @@ resolved -- pnpm workspace hoisting handles it for now.
 
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary", "js_test")
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
+load("@npm//:defs.bzl", "npm_link_all_packages")
 
 # =============================================================================
 # npm link - makes node_modules available for this package
 # =============================================================================
+
+npm_link_all_packages(name = "node_modules")
 
 
 # =============================================================================
@@ -57,7 +60,7 @@ js_run_binary(
         "package.json",
         "tsconfig.json",
         "vite.config.ts",
-        "//:node_modules",
+        ":node_modules",
         "//packages:tsconfig_base",
     ],
     args = [
@@ -114,10 +117,10 @@ js_test(
         "package.json",
         "tsconfig.json",
         "vitest.config.ts",
-        "//:node_modules",
-        "//:node_modules/vitest",
-        "//:node_modules/fast-check",
-        "//:node_modules/@fast-check/vitest",
+        ":node_modules",
+        ":node_modules/vitest",
+        ":node_modules/fast-check",
+        ":node_modules/@fast-check/vitest",
     ],
     entry_point = "//:vitest_bin",
     args = [
@@ -146,7 +149,7 @@ js_run_binary(
         "src/**/*.svelte",
     ]) + [
         "tsconfig.json",
-        "//:node_modules",
+        ":node_modules",
         "//packages:tsconfig_base",
     ],
     args = [
