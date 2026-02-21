@@ -20,13 +20,11 @@ resolved -- pnpm workspace hoisting handles it for now.
 
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary", "js_test")
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
-load("@npm//:defs.bzl", "npm_link_all_packages")
 
 # =============================================================================
 # npm link - makes node_modules available for this package
 # =============================================================================
 
-npm_link_all_packages(name = "node_modules")
 
 # =============================================================================
 # Vite library build
@@ -45,7 +43,7 @@ npm_link_all_packages(name = "node_modules")
 
 js_run_binary(
     name = "tinyvectors_build",
-    tool = ":node_modules/vite/bin/vite.js",
+    tool = "//:node_modules/vite/bin/vite.js",
     srcs = glob(
         [
             "src/**/*.ts",
@@ -59,7 +57,7 @@ js_run_binary(
         "package.json",
         "tsconfig.json",
         "vite.config.ts",
-        ":node_modules",
+        "//:node_modules",
         "//:tsconfig_base",
     ],
     args = [
@@ -116,12 +114,12 @@ js_test(
         "package.json",
         "tsconfig.json",
         "vitest.config.ts",
-        ":node_modules",
-        ":node_modules/vitest",
-        ":node_modules/fast-check",
-        ":node_modules/@fast-check/vitest",
+        "//:node_modules",
+        "//:node_modules/vitest",
+        "//:node_modules/fast-check",
+        "//:node_modules/@fast-check/vitest",
     ],
-    entry_point = ":node_modules/vitest/vitest.mjs",
+    entry_point = "//:node_modules/vitest/vitest.mjs",
     args = [
         "run",
         "--reporter=verbose",
@@ -142,13 +140,13 @@ js_test(
 
 js_run_binary(
     name = "typecheck",
-    tool = ":node_modules/svelte-check/bin/svelte-check",
+    tool = "//:node_modules/svelte-check/bin/svelte-check",
     srcs = glob([
         "src/**/*.ts",
         "src/**/*.svelte",
     ]) + [
         "tsconfig.json",
-        ":node_modules",
+        "//:node_modules",
         "//:tsconfig_base",
     ],
     args = [
