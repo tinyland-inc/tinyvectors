@@ -21,7 +21,7 @@ resolved -- pnpm workspace hoisting handles it for now.
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary", "js_test")
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@npm//:defs.bzl", "npm_link_all_packages")
-load("@npm//vitest:package_json.bzl", vitest_bin = "bin")
+load("@npm//:vitest/package_json.bzl", vitest_bin = "bin")
 
 # =============================================================================
 # npm link - makes node_modules available for this package
