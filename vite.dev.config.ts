@@ -23,7 +23,7 @@ export default defineConfig({
 		port: 5175,
 		open: true,
 		hmr: {
-			port: 24679, // Avoid conflict with main app's 24678
+			port: 24679, 
 		},
 	},
 });

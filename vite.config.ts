@@ -6,7 +6,7 @@ export default defineConfig({
 	plugins: [
 		svelte({
 			compilerOptions: {
-				// Generate runes-mode components
+				
 				runes: true,
 			},
 		}),
@@ -38,20 +38,20 @@ export default defineConfig({
 			},
 		},
 
-		// Generate sourcemaps for debugging
+		
 		sourcemap: true,
 
-		// Ensure clean output
+		
 		emptyOutDir: true,
 
-		// Target modern browsers
+		
 		target: 'es2022',
 
-		// Minify for production
+		
 		minify: 'esbuild',
 	},
 
-	// Resolve aliases for cleaner imports
+	
 	resolve: {
 		alias: {
 			$lib: resolve(__dirname, 'src'),

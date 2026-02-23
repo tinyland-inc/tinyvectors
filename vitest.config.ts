@@ -13,7 +13,7 @@ export default defineConfig({
 		exclude: ['**/node_modules/**', '**/dist/**'],
 		environment: 'node',
 		globals: true,
-		testTimeout: 30000, // PBT tests may need more time
+		testTimeout: 30000, 
 		pool: 'forks',
 		isolate: true,
 		coverage: {
