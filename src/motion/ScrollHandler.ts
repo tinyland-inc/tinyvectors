@@ -1,8 +1,8 @@
-/**
- * ScrollHandler - Scroll velocity and physics tracking
- *
- * Tracks scroll events and generates "pull forces" for blob animations.
- */
+
+
+
+
+
 
 export interface ScrollHandlerConfig {
 	decayRate?: number;

@@ -1,6 +1,6 @@
-/**
- * Themes module - Color presets and CSS generation
- */
+
+
+
 
 import { THEME_PRESETS, type ThemePreset } from '../core/schema.js';
 
@@ -15,16 +15,16 @@ export {
 	type ThemePresetName,
 } from '../core/schema.js';
 
-/**
- * Get theme preset by name
- */
+
+
+
 export function getThemePreset(name: string): ThemePreset | undefined {
 	return THEME_PRESETS[name as keyof typeof THEME_PRESETS];
 }
 
-/**
- * Generate CSS custom properties for a theme
- */
+
+
+
 export function generateThemeCSS(
 	theme: ThemePreset,
 	prefix = '--vector-'
@@ -39,17 +39,17 @@ export function generateThemeCSS(
 	return lines.join('\n');
 }
 
-/**
- * Check if current mode is dark
- */
+
+
+
 export function isDarkMode(): boolean {
 	if (typeof document === 'undefined') return false;
 	return document.documentElement.classList.contains('dark');
 }
 
-/**
- * Watch for dark mode changes
- */
+
+
+
 export function watchDarkMode(callback: (isDark: boolean) => void): () => void {
 	if (typeof document === 'undefined') return () => {};
 
@@ -63,7 +63,7 @@ export function watchDarkMode(callback: (isDark: boolean) => void): () => void {
 
 	observer.observe(document.documentElement, { attributes: true });
 
-	// Call immediately with current state
+	
 	callback(document.documentElement.classList.contains('dark'));
 
 	return () => observer.disconnect();

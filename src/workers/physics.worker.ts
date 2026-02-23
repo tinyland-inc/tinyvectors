@@ -1,14 +1,14 @@
-/**
- * Physics Web Worker
- *
- * Runs blob physics simulation off the main thread.
- * Communicates via postMessage with minimal render data.
- */
+
+
+
+
+
+
 
 import { BlobPhysics, type BlobPhysicsConfig } from '../core/BlobPhysics.js';
 import type { ConvexBlob } from '../core/types.js';
 
-// Message types from main thread
+
 type WorkerInMessage =
 	| { type: 'init'; blobCount: number; config: Partial<BlobPhysicsConfig> }
 	| { type: 'tick' }
@@ -18,15 +18,15 @@ type WorkerInMessage =
 	| { type: 'updateMouse'; x: number; y: number }
 	| { type: 'dispose' };
 
-// Message types to main thread
+
 type WorkerOutMessage =
 	| { type: 'ready' }
 	| { type: 'frame'; blobs: BlobRenderData[] }
 	| { type: 'error'; message: string };
 
-/**
- * Minimal data needed for rendering (not full ConvexBlob)
- */
+
+
+
 export interface BlobRenderData {
 	x: number;
 	y: number;
@@ -37,14 +37,14 @@ export interface BlobRenderData {
 	intensity: number;
 }
 
-// Physics instance
+
 let physics: BlobPhysics | null = null;
 let lastTime = performance.now();
 let isInitialized = false;
 
-/**
- * Extract minimal render data from blobs
- */
+
+
+
 function extractRenderData(blobs: ConvexBlob[]): BlobRenderData[] {
 	return blobs.map((blob) => ({
 		x: blob.currentX,
@@ -57,9 +57,9 @@ function extractRenderData(blobs: ConvexBlob[]): BlobRenderData[] {
 	}));
 }
 
-/**
- * Handle incoming messages
- */
+
+
+
 self.onmessage = (e: MessageEvent<WorkerInMessage>) => {
 	try {
 		switch (e.data.type) {
@@ -77,12 +77,12 @@ self.onmessage = (e: MessageEvent<WorkerInMessage>) => {
 				if (!physics || !isInitialized) return;
 
 				const now = performance.now();
-				const dt = Math.min((now - lastTime) / 1000, 0.033); // Cap at ~30fps worth of dt
+				const dt = Math.min((now - lastTime) / 1000, 0.033); 
 				lastTime = now;
 
 				physics.tick(dt, now / 1000);
 
-				// Send minimal render data back
+				
 				const renderData = extractRenderData(physics.getBlobs());
 				self.postMessage({ type: 'frame', blobs: renderData } satisfies WorkerOutMessage);
 				break;
@@ -121,5 +121,5 @@ self.onmessage = (e: MessageEvent<WorkerInMessage>) => {
 	}
 };
 
-// Export types for consumers
+
 export type { WorkerInMessage, WorkerOutMessage };
