@@ -1,20 +1,20 @@
-/**
- * Property-Based Testing Arbitraries for TinyVectors
- *
- * Custom fast-check arbitraries for generating test data.
- * Uses Math.fround() for 32-bit float compatibility.
- */
+
+
+
+
+
+
 
 import * as fc from 'fast-check';
 import type { ControlPoint, ControlPointVelocity, ConvexBlob } from '../../src/core/types.js';
 
-// ============================================================================
-// Control Point Arbitraries
-// ============================================================================
 
-/**
- * Generate a valid control point
- */
+
+
+
+
+
+
 export const controlPointArb: fc.Arbitrary<ControlPoint> = fc.record({
 	radius: fc.float({ min: Math.fround(5), max: Math.fround(50), noNaN: true }),
 	angle: fc.float({ min: 0, max: Math.fround(Math.PI * 2), noNaN: true }),
@@ -25,9 +25,9 @@ export const controlPointArb: fc.Arbitrary<ControlPoint> = fc.record({
 	tension: fc.float({ min: Math.fround(0.1), max: Math.fround(0.5), noNaN: true }),
 });
 
-/**
- * Generate control point with consistent baseRadius and radius
- */
+
+
+
 export const consistentControlPointArb: fc.Arbitrary<ControlPoint> = fc
 	.float({ min: Math.fround(10), max: Math.fround(40), noNaN: true })
 	.chain((baseRadius) =>
@@ -50,19 +50,19 @@ export const consistentControlPointArb: fc.Arbitrary<ControlPoint> = fc
 		})
 	);
 
-/**
- * Generate control point velocity
- */
+
+
+
 export const controlPointVelocityArb: fc.Arbitrary<ControlPointVelocity> = fc.record({
 	radialVelocity: fc.float({ min: Math.fround(-1), max: Math.fround(1), noNaN: true }),
 	angularVelocity: fc.float({ min: Math.fround(-0.01), max: Math.fround(0.01), noNaN: true }),
 	pressureVelocity: fc.float({ min: Math.fround(-0.1), max: Math.fround(0.1), noNaN: true }),
 });
 
-/**
- * Generate array of control points forming a valid blob shape
- * Points are evenly distributed around a circle
- */
+
+
+
+
 export const controlPointsArrayArb = (count: number = 8): fc.Arbitrary<ControlPoint[]> =>
 	fc
 		.float({ min: Math.fround(15), max: Math.fround(35), noNaN: true })
@@ -90,35 +90,35 @@ export const controlPointsArrayArb = (count: number = 8): fc.Arbitrary<ControlPo
 			}))
 		);
 
-// ============================================================================
-// Blob Arbitraries
-// ============================================================================
 
-/**
- * Physics bounds
- */
+
+
+
+
+
+
 const PHYSICS_MIN = -40;
 const PHYSICS_MAX = 140;
 
-/**
- * Generate position within physics bounds
- */
+
+
+
 export const positionArb = fc.record({
 	x: fc.float({ min: Math.fround(PHYSICS_MIN + 20), max: Math.fround(PHYSICS_MAX - 20), noNaN: true }),
 	y: fc.float({ min: Math.fround(PHYSICS_MIN + 20), max: Math.fround(PHYSICS_MAX - 20), noNaN: true }),
 });
 
-/**
- * Generate velocity vector
- */
+
+
+
 export const velocityArb = fc.record({
 	x: fc.float({ min: Math.fround(-0.5), max: Math.fround(0.5), noNaN: true }),
 	y: fc.float({ min: Math.fround(-0.5), max: Math.fround(0.5), noNaN: true }),
 });
 
-/**
- * Generate a minimal blob for physics testing
- */
+
+
+
 export const minimalBlobArb: fc.Arbitrary<Partial<ConvexBlob>> = fc.record({
 	currentX: fc.float({ min: Math.fround(PHYSICS_MIN + 20), max: Math.fround(PHYSICS_MAX - 20), noNaN: true }),
 	currentY: fc.float({ min: Math.fround(PHYSICS_MIN + 20), max: Math.fround(PHYSICS_MAX - 20), noNaN: true }),
@@ -128,9 +128,9 @@ export const minimalBlobArb: fc.Arbitrary<Partial<ConvexBlob>> = fc.record({
 	personalSpace: fc.float({ min: Math.fround(30), max: Math.fround(60), noNaN: true }),
 });
 
-/**
- * Generate a full blob with control points
- */
+
+
+
 export const fullBlobArb: fc.Arbitrary<ConvexBlob> = fc
 	.tuple(
 		fc.float({ min: Math.fround(PHYSICS_MIN + 20), max: Math.fround(PHYSICS_MAX - 20), noNaN: true }),
@@ -172,94 +172,94 @@ export const fullBlobArb: fc.Arbitrary<ConvexBlob> = fc
 		}))
 	);
 
-/**
- * Generate array of blobs
- */
+
+
+
 export const blobsArrayArb = (count: number = 8): fc.Arbitrary<ConvexBlob[]> =>
 	fc.array(fullBlobArb, { minLength: count, maxLength: count });
 
-// ============================================================================
-// Force and Physics Arbitraries
-// ============================================================================
 
-/**
- * Generate gravity/accelerometer vector
- */
+
+
+
+
+
+
 export const gravityArb = fc.record({
 	x: fc.float({ min: Math.fround(-9.8), max: Math.fround(9.8), noNaN: true }),
 	y: fc.float({ min: Math.fround(-9.8), max: Math.fround(9.8), noNaN: true }),
 });
 
-/**
- * Generate normalized gravity (-1 to 1)
- */
+
+
+
 export const normalizedGravityArb = fc.record({
 	x: fc.float({ min: Math.fround(-1), max: Math.fround(1), noNaN: true }),
 	y: fc.float({ min: Math.fround(-1), max: Math.fround(1), noNaN: true }),
 });
 
-/**
- * Generate tilt vector
- */
+
+
+
 export const tiltArb = fc.record({
 	x: fc.float({ min: Math.fround(-2), max: Math.fround(2), noNaN: true }),
 	y: fc.float({ min: Math.fround(-1), max: Math.fround(1), noNaN: true }),
 	z: fc.float({ min: 0, max: Math.fround(1), noNaN: true }),
 });
 
-/**
- * Generate delta time (frame time)
- */
+
+
+
 export const deltaTimeArb = fc.float({ min: Math.fround(0.001), max: Math.fround(0.05), noNaN: true });
 
-/**
- * Generate external force
- */
+
+
+
 export const forceArb = fc.record({
 	x: fc.float({ min: Math.fround(-1), max: Math.fround(1), noNaN: true }),
 	y: fc.float({ min: Math.fround(-1), max: Math.fround(1), noNaN: true }),
 });
 
-/**
- * Generate radial force (for control point deformation)
- */
+
+
+
 export const radialForceArb = fc.float({ min: Math.fround(-0.5), max: Math.fround(0.5), noNaN: true });
 
-// ============================================================================
-// Kernel and Smoothing Arbitraries
-// ============================================================================
 
-/**
- * Generate odd kernel size (3, 5, 7, 9)
- */
+
+
+
+
+
+
 export const kernelSizeArb = fc.integer({ min: 1, max: 4 }).map((n) => n * 2 + 1);
 
-/**
- * Generate Gaussian sigma
- */
+
+
+
 export const sigmaArb = fc.float({ min: Math.fround(0.5), max: Math.fround(3.0), noNaN: true });
 
-// ============================================================================
-// Spatial Hash Arbitraries
-// ============================================================================
 
-/**
- * Generate cell size for spatial hash
- */
+
+
+
+
+
+
 export const cellSizeArb = fc.float({ min: Math.fround(20), max: Math.fround(80), noNaN: true });
 
-/**
- * Generate query radius
- */
+
+
+
 export const queryRadiusArb = fc.float({ min: Math.fround(10), max: Math.fround(100), noNaN: true });
 
-// ============================================================================
-// Helper Functions
-// ============================================================================
 
-/**
- * Create a blob at a specific position (for controlled tests)
- */
+
+
+
+
+
+
 export function createBlobAt(x: number, y: number, size: number = 25): ConvexBlob {
 	const controlPoints: ControlPoint[] = [];
 	const controlVelocities: ControlPointVelocity[] = [];

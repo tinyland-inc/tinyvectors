@@ -1,9 +1,9 @@
-/**
- * TinyVectors Core Unit Tests
- *
- * Tests for PathGenerator, SpatialHash, and GaussianKernel.
- * Includes both standard unit tests and PBT invariants.
- */
+
+
+
+
+
+
 
 import { describe, it, expect } from 'vitest';
 import {
@@ -19,9 +19,9 @@ import { GaussianKernel } from '../../src/core/GaussianKernel.js';
 import type { RenderBlob } from '../../src/core/schema.js';
 import type { ConvexBlob, ControlPoint } from '../../src/core/types.js';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+
+
+
 
 function createTestBlob(overrides: Partial<RenderBlob> = {}): RenderBlob {
   return {
@@ -93,9 +93,9 @@ function createTestConvexBlob(x: number, y: number, size: number = 25): ConvexBl
   };
 }
 
-// ============================================================================
-// PathGenerator Tests
-// ============================================================================
+
+
+
 
 describe('PathGenerator', () => {
   describe('generateSmoothBlobPathSync', () => {
@@ -104,15 +104,15 @@ describe('PathGenerator', () => {
       const path = generateSmoothBlobPathSync(blob);
 
       expect(path).toBeTruthy();
-      expect(path).toMatch(/^M /); // Starts with Move command
-      expect(path).toMatch(/ Z$/); // Ends with close path
+      expect(path).toMatch(/^M /); 
+      expect(path).toMatch(/ Z$/); 
     });
 
     it('should contain cubic bezier curve commands', () => {
       const blob = createTestBlob();
       const path = generateSmoothBlobPathSync(blob);
 
-      // Should have 8 cubic bezier curves (one for each control point)
+      
       const curveCount = (path.match(/ C /g) || []).length;
       expect(curveCount).toBe(8);
     });
@@ -121,7 +121,7 @@ describe('PathGenerator', () => {
       const blob = createTestBlob({ currentX: 100, currentY: 100, size: 20 });
       const path = generateSmoothBlobPathSync(blob);
 
-      // Parse first point from M command
+      
       const match = path.match(/^M ([\d.-]+),([\d.-]+)/);
       expect(match).not.toBeNull();
 
@@ -129,7 +129,7 @@ describe('PathGenerator', () => {
         const x = parseFloat(match[1]);
         const y = parseFloat(match[2]);
 
-        // First point should be near the blob center + radius
+        
         expect(Math.abs(x - 100)).toBeLessThan(30);
         expect(Math.abs(y - 100)).toBeLessThan(30);
       }
@@ -219,9 +219,9 @@ describe('PathGenerator', () => {
   });
 });
 
-// ============================================================================
-// SpatialHash Tests
-// ============================================================================
+
+
+
 
 describe('SpatialHash', () => {
   describe('constructor', () => {
@@ -285,7 +285,7 @@ describe('SpatialHash', () => {
       ];
 
       hash.rebuild(blobs);
-      // All blobs within same 100x100 cell
+      
       expect(hash.getCellCount()).toBe(1);
     });
   });
@@ -295,8 +295,8 @@ describe('SpatialHash', () => {
       const hash = new SpatialHash(50);
       const blobs = [
         createTestConvexBlob(50, 50),
-        createTestConvexBlob(55, 50), // 5 units away
-        createTestConvexBlob(200, 200), // Far away
+        createTestConvexBlob(55, 50), 
+        createTestConvexBlob(200, 200), 
       ];
 
       hash.rebuild(blobs);
@@ -371,16 +371,16 @@ describe('SpatialHash', () => {
         createTestConvexBlob(30, 10),
       ];
 
-      // Give unique gradient IDs for pair tracking
+      
       blobs.forEach((b, i) => { b.gradientId = `blob-${i}`; });
 
       hash.rebuild(blobs);
       const pairs = hash.getAllPairs(50);
 
-      // Should find pairs between close blobs
+      
       expect(pairs.length).toBeGreaterThan(0);
 
-      // Each pair should have distance
+      
       for (const [b1, b2, distance] of pairs) {
         expect(b1).not.toBe(b2);
         expect(distance).toBeGreaterThanOrEqual(0);
@@ -453,14 +453,14 @@ describe('SpatialHash', () => {
 
       const hashResults = new Set(hash.query(queryX, queryY, radius));
 
-      // Brute force reference
+      
       const bruteForce = blobs.filter(b => {
         const dx = b.currentX - queryX;
         const dy = b.currentY - queryY;
         return Math.sqrt(dx * dx + dy * dy) < radius;
       });
 
-      // Hash must find everything brute force finds
+      
       for (const b of bruteForce) {
         expect(hashResults.has(b)).toBe(true);
       }
@@ -468,9 +468,9 @@ describe('SpatialHash', () => {
   });
 });
 
-// ============================================================================
-// GaussianKernel Tests
-// ============================================================================
+
+
+
 
 describe('GaussianKernel', () => {
   describe('constructor', () => {
@@ -561,7 +561,7 @@ describe('GaussianKernel', () => {
     it('INVARIANT: smoothing reduces radius variance', () => {
       const kernel = new GaussianKernel(5, 1.0);
       const points: ControlPoint[] = Array.from({ length: 8 }, (_, i) => ({
-        radius: 20 + Math.sin(i * 3) * 5, // Non-uniform
+        radius: 20 + Math.sin(i * 3) * 5, 
         angle: (i / 8) * Math.PI * 2,
         baseRadius: 20,
         targetRadius: 20,
@@ -617,11 +617,11 @@ describe('GaussianKernel', () => {
       const baseRadii = [18, 22, 19, 21, 20, 23, 17, 24];
       const count = baseRadii.length;
 
-      // Method 1: convolveArray
+      
       const inputArray = new Float32Array(baseRadii);
       const resultArray = kernel.convolveArray(inputArray, count);
 
-      // Method 2: convolve (on ControlPoints)
+      
       const points: ControlPoint[] = baseRadii.map((r, i) => ({
         radius: r,
         angle: (i / count) * Math.PI * 2,
@@ -642,7 +642,7 @@ describe('GaussianKernel', () => {
 
       expect(result).toBeInstanceOf(Float32Array);
       expect(result.length).toBe(5);
-      expect(result).not.toBe(input); // New array
+      expect(result).not.toBe(input); 
     });
   });
 
@@ -656,7 +656,7 @@ describe('GaussianKernel', () => {
     });
 
     it('should compute correct variance', () => {
-      // [1, 3] -> mean=2, variance = ((1-2)^2 + (3-2)^2) / 2 = 1
+      
       expect(GaussianKernel.computeVariance([1, 3])).toBeCloseTo(1, 5);
     });
 

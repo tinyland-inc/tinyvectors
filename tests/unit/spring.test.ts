@@ -1,9 +1,9 @@
-/**
- * Spring System Unit Tests
- *
- * Tests for SpringSystem equilibrium, energy conservation, area computation,
- * circularity metrics, and PBT invariants.
- */
+
+
+
+
+
+
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
@@ -17,9 +17,9 @@ import {
 import type { SpringConfig } from '../../src/core/SpringSystem.js';
 import type { ControlPoint, ControlPointVelocity } from '../../src/core/types.js';
 
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+
+
+
 
 function createCircularPoints(count: number, radius: number): ControlPoint[] {
   return Array.from({ length: count }, (_, i) => ({
@@ -47,9 +47,9 @@ function createZeroVelocities(count: number): ControlPointVelocity[] {
   }));
 }
 
-// ============================================================================
-// SpringSystem Tests
-// ============================================================================
+
+
+
 
 describe('SpringSystem', () => {
   let spring: SpringSystem;
@@ -71,7 +71,7 @@ describe('SpringSystem', () => {
 
       expect(config.springConstant).toBe(0.5);
       expect(config.dampingCoeff).toBe(0.9);
-      // Other values should remain default
+      
       expect(config.couplingStrength).toBe(DEFAULT_SPRING_CONFIG.couplingStrength);
     });
   });
@@ -80,7 +80,7 @@ describe('SpringSystem', () => {
     it('should update configuration', () => {
       spring.setConfig({ springConstant: 0.2 });
       expect(spring.getConfig().springConstant).toBe(0.2);
-      // Other values unchanged
+      
       expect(spring.getConfig().dampingCoeff).toBe(DEFAULT_SPRING_CONFIG.dampingCoeff);
     });
   });
@@ -88,7 +88,7 @@ describe('SpringSystem', () => {
   describe('updateControlPoint', () => {
     it('should apply restoring force toward baseRadius', () => {
       const point: ControlPoint = {
-        radius: 30, // Above base
+        radius: 30, 
         angle: 0,
         baseRadius: 20,
         targetRadius: 20,
@@ -107,19 +107,19 @@ describe('SpringSystem', () => {
 
       spring.updateControlPoint(point, velocity, neighbor, neighbor, 0, 0.016);
 
-      // Velocity should be negative (restoring toward base)
+      
       expect(velocity.radialVelocity).toBeLessThan(0);
     });
 
     it('should clamp velocity to maxVelocity', () => {
       const config: Partial<SpringConfig> = {
-        springConstant: 10, // Very high spring constant
+        springConstant: 10, 
         maxVelocity: 1.0,
       };
       const stiffSpring = new SpringSystem(config);
 
       const point: ControlPoint = {
-        radius: 50, // Way above base
+        radius: 50, 
         angle: 0,
         baseRadius: 20,
         targetRadius: 20,
@@ -143,13 +143,13 @@ describe('SpringSystem', () => {
 
     it('should clamp radius to prevent extreme deformation', () => {
       const point: ControlPoint = {
-        radius: 100, // Way beyond limits
+        radius: 100, 
         angle: 0,
         baseRadius: 20,
         targetRadius: 20,
       };
       const velocity: ControlPointVelocity = {
-        radialVelocity: 10, // Still pushing outward
+        radialVelocity: 10, 
         angularVelocity: 0,
         pressureVelocity: 0,
       };
@@ -172,12 +172,12 @@ describe('SpringSystem', () => {
       const points = createCircularPoints(8, 20);
       const velocities = createZeroVelocities(8);
 
-      // Displace one point
+      
       points[0].radius = 25;
 
       spring.updateAllControlPoints(points, velocities, 0, 0.016);
 
-      // Displaced point should have non-zero velocity
+      
       expect(velocities[0].radialVelocity).not.toBe(0);
     });
 
@@ -189,7 +189,7 @@ describe('SpringSystem', () => {
 
       spring.updateAllControlPoints(points, velocities, 0, 0.016);
 
-      // Should be unchanged
+      
       expect(velocities[0].radialVelocity).toBe(0);
     });
 
@@ -197,11 +197,11 @@ describe('SpringSystem', () => {
       const points = createCircularPoints(8, 20);
       const velocities = createZeroVelocities(8);
       const forces = Array.from({ length: 8 }, () => 0);
-      forces[0] = 1.0; // Apply force to first point only
+      forces[0] = 1.0; 
 
       spring.updateAllControlPoints(points, velocities, forces, 0.016);
 
-      // First point should have more velocity than others
+      
       expect(Math.abs(velocities[0].radialVelocity)).toBeGreaterThan(
         Math.abs(velocities[4].radialVelocity)
       );
@@ -213,7 +213,7 @@ describe('SpringSystem', () => {
 
       spring.updateAllControlPoints(points, velocities, 0.5, 0.016);
 
-      // All points should have similar non-zero velocity
+      
       for (const v of velocities) {
         expect(v.radialVelocity).not.toBe(0);
       }
@@ -225,13 +225,13 @@ describe('SpringSystem', () => {
       const points = createCircularPoints(8, 20);
       const velocities = createZeroVelocities(8);
 
-      spring.applyImpulse(points, velocities, 0, 1.0); // Impulse from the right
+      spring.applyImpulse(points, velocities, 0, 1.0); 
 
-      // Point at angle 0 (right side) should be compressed
+      
       expect(velocities[0].radialVelocity).toBeLessThan(0);
 
-      // Point at angle PI (left side) should be expanded
-      const oppositeIdx = 4; // 180 degrees
+      
+      const oppositeIdx = 4; 
       expect(velocities[oppositeIdx].radialVelocity).toBeGreaterThan(0);
     });
   });
@@ -266,7 +266,7 @@ describe('SpringSystem', () => {
         { radialVelocity: 2, angularVelocity: 0, pressureVelocity: 0 },
       ];
 
-      // KE = 0.5 * 2^2 = 2
+      
       expect(spring.getKineticEnergy(velocities)).toBeCloseTo(2, 5);
     });
   });
@@ -312,7 +312,7 @@ describe('SpringSystem', () => {
       const points = createDisplacedPoints(8, 20, 5);
       const velocities = createZeroVelocities(8);
 
-      // Give initial velocity
+      
       for (const v of velocities) {
         v.radialVelocity = 1.0;
       }
@@ -320,7 +320,7 @@ describe('SpringSystem', () => {
       const initialEnergy = dampedSystem.getKineticEnergy(velocities)
         + dampedSystem.getPotentialEnergy(points);
 
-      // Run many frames (1500 iterations = 24s sim time for gentle damping)
+      
       for (let i = 0; i < 1500; i++) {
         dampedSystem.updateAllControlPoints(points, velocities, 0, 0.016);
       }
@@ -328,10 +328,10 @@ describe('SpringSystem', () => {
       const finalEnergy = dampedSystem.getKineticEnergy(velocities)
         + dampedSystem.getPotentialEnergy(points);
 
-      // Energy must decrease
+      
       expect(finalEnergy).toBeLessThan(initialEnergy);
 
-      // Final energy should be very low
+      
       expect(finalEnergy).toBeLessThan(initialEnergy * 0.1);
     });
 
@@ -379,7 +379,7 @@ describe('SpringSystem', () => {
         energySamples.push(energy);
       }
 
-      // Energy should generally decrease over batches
+      
       for (let i = 1; i < energySamples.length; i++) {
         expect(energySamples[i]).toBeLessThanOrEqual(energySamples[i - 1] * 1.01);
       }
@@ -387,9 +387,9 @@ describe('SpringSystem', () => {
   });
 });
 
-// ============================================================================
-// createControlPointVelocities Tests
-// ============================================================================
+
+
+
 
 describe('createControlPointVelocities', () => {
   it('should create correct number of velocity objects', () => {
@@ -419,9 +419,9 @@ describe('createControlPointVelocities', () => {
   });
 });
 
-// ============================================================================
-// computePolygonArea Tests
-// ============================================================================
+
+
+
 
 describe('computePolygonArea', () => {
   it('should compute positive area for valid polygon', () => {
@@ -433,12 +433,12 @@ describe('computePolygonArea', () => {
 
   it('should approximate circle area for circular points', () => {
     const radius = 20;
-    const count = 32; // More points = better approximation
+    const count = 32; 
     const points = createCircularPoints(count, radius);
     const area = computePolygonArea(points);
 
     const expectedArea = Math.PI * radius * radius;
-    // Should be within 5% of circle area
+    
     expect(Math.abs(area - expectedArea) / expectedArea).toBeLessThan(0.05);
   });
 
@@ -458,7 +458,7 @@ describe('computePolygonArea', () => {
       const radius = 10 + Math.random() * 30;
       const points = createCircularPoints(8, radius);
 
-      // Randomly perturb radii
+      
       for (const p of points) {
         p.radius *= 0.5 + Math.random();
       }
@@ -468,9 +468,9 @@ describe('computePolygonArea', () => {
   });
 });
 
-// ============================================================================
-// computeCircularity Tests
-// ============================================================================
+
+
+
 
 describe('computeCircularity', () => {
   it('should return 1.0 for perfect circle', () => {
@@ -480,7 +480,7 @@ describe('computeCircularity', () => {
 
   it('should return value between 0 and 1', () => {
     const points = createCircularPoints(8, 20);
-    // Deform
+    
     points[0].radius *= 1.5;
     points[4].radius *= 0.5;
 
@@ -506,16 +506,16 @@ describe('computeCircularity', () => {
   });
 });
 
-// ============================================================================
-// enforceAreaConservation Tests
-// ============================================================================
+
+
+
 
 describe('enforceAreaConservation', () => {
   it('should bring area close to target', () => {
     const points = createCircularPoints(8, 20);
     const targetArea = computePolygonArea(points);
 
-    // Expand all radii
+    
     for (const p of points) {
       p.radius *= 1.5;
     }
@@ -543,7 +543,7 @@ describe('enforceAreaConservation', () => {
 
     enforceAreaConservation(points, smallTarget, 0.01);
 
-    // Radii should be smaller now
+    
     for (const p of points) {
       expect(p.radius).toBeLessThan(20);
     }
@@ -555,7 +555,7 @@ describe('enforceAreaConservation', () => {
 
     enforceAreaConservation(points, largeTarget, 0.01);
 
-    // Radii should be larger now
+    
     for (const p of points) {
       expect(p.radius).toBeGreaterThan(20);
     }
