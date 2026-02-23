@@ -22,17 +22,17 @@ function mountApp() {
 	});
 }
 
-// Initial mount
+
 mountApp();
 
-// Theme selector
+
 const themeSelect = document.getElementById('theme-select') as HTMLSelectElement;
 themeSelect?.addEventListener('change', () => {
 	currentProps.theme = themeSelect.value as 'tinyland' | 'trans' | 'pride';
 	mountApp();
 });
 
-// Blob count slider
+
 const blobCountSlider = document.getElementById('blob-count') as HTMLInputElement;
 const blobCountValue = document.getElementById('blob-count-value');
 blobCountSlider?.addEventListener('input', () => {
@@ -45,7 +45,7 @@ blobCountSlider?.addEventListener('change', () => {
 	mountApp();
 });
 
-// Dark mode toggle
+
 const darkModeCheckbox = document.getElementById('dark-mode') as HTMLInputElement;
 darkModeCheckbox?.addEventListener('change', () => {
 	document.body.classList.toggle('dark', darkModeCheckbox.checked);
@@ -53,14 +53,14 @@ darkModeCheckbox?.addEventListener('change', () => {
 	document.documentElement.classList.toggle('dark', darkModeCheckbox.checked);
 });
 
-// Animated toggle
+
 const animatedCheckbox = document.getElementById('animated') as HTMLInputElement;
 animatedCheckbox?.addEventListener('change', () => {
 	currentProps.animated = animatedCheckbox.checked;
 	mountApp();
 });
 
-// Reload button
+
 const reloadBtn = document.getElementById('reload-btn');
 reloadBtn?.addEventListener('click', () => {
 	mountApp();
