@@ -23,6 +23,8 @@ jobs:
           registry-url: 'https://registry.npmjs.org'
       - run: pnpm install --no-frozen-lockfile
       - run: pnpm run build
-      - run: pnpm publish --no-git-checks --access public --provenance
+      - run: |
+          echo "//registry.npmjs.org/:_authToken=${NODE_AUTH_TOKEN}" > ~/.npmrc
+          pnpm publish --no-git-checks --access public --provenance
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
