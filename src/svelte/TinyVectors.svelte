@@ -126,15 +126,9 @@
 		}
 	};
 
-	// Handle scroll - no reactive state updates
+	// Handle scroll passively — never block native scrolling
 	const handleScroll = (event: WheelEvent) => {
 		if (!scrollHandler || !physics) return;
-
-		const scrollMagnitude = Math.abs(event.deltaY);
-		if (scrollMagnitude > 50) {
-			event.preventDefault();
-		}
-
 		scrollHandler.handleScroll(event);
 		const stickiness = scrollHandler.getStickiness() * 0.12;
 		physics.setScrollStickiness(stickiness);
@@ -204,7 +198,7 @@
 
 			// Set up scroll listener
 			if (enableScrollPhysics) {
-				window.addEventListener('wheel', handleScroll, { passive: false });
+				window.addEventListener('wheel', handleScroll, { passive: true });
 			}
 		});
 
