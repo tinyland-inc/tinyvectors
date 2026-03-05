@@ -29,7 +29,17 @@ export default defineConfig({
 			output: {
 				preserveModules: true,
 				preserveModulesRoot: 'src',
-				entryFileNames: '[name].js',
+				// Strip .svelte from compiled output filenames to prevent
+				// downstream vite-plugin-svelte from re-processing them.
+				// BlobSVG.svelte → BlobSVG.js (not BlobSVG.svelte.js)
+				entryFileNames: (chunkInfo) => {
+					const name = chunkInfo.name.replace(/\.svelte$/, '');
+					return `${name}.js`;
+				},
+				chunkFileNames: (chunkInfo) => {
+					const name = chunkInfo.name.replace(/\.svelte$/, '');
+					return `${name}.js`;
+				},
 				assetFileNames: '[name][extname]',
 			},
 			treeshake: {
