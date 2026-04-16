@@ -19,17 +19,29 @@ const extract = (source, pattern, label) => {
 const checks = [
 	{
 		label: 'MODULE.bazel version',
-		actual: extract(moduleBazel, /module\([\s\S]*?version = "([^"]+)"/m, 'module version'),
+		actual: extract(
+			moduleBazel,
+			/module\([\s\S]*?version = "([^"]+)"/m,
+			'module version',
+		),
 		expected: packageJson.version,
 	},
 	{
 		label: 'BUILD.bazel npm_package version',
-		actual: extract(buildBazel, /npm_package\([\s\S]*?version = "([^"]+)"/m, 'npm_package version'),
+		actual: extract(
+			buildBazel,
+			/npm_package\([\s\S]*?version = "([^"]+)"/m,
+			'npm_package version',
+		),
 		expected: packageJson.version,
 	},
 	{
 		label: 'BUILD.bazel npm_package name',
-		actual: extract(buildBazel, /npm_package\([\s\S]*?package = "([^"]+)"/m, 'npm_package name'),
+		actual: extract(
+			buildBazel,
+			/npm_package\([\s\S]*?package = "([^"]+)"/m,
+			'npm_package name',
+		),
 		expected: packageJson.name,
 	},
 	{

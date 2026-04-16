@@ -145,7 +145,6 @@ vitest_bin.vitest_test(
         ":node_modules",
         ":node_modules/vitest",
         ":node_modules/fast-check",
-        ":node_modules/@fast-check/vitest",
     ],
     args = [
         "run",

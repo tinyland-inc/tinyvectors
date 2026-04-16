@@ -11,9 +11,6 @@ importers:
 
   .:
     devDependencies:
-      '@fast-check/vitest':
-        specifier: ^0.4.0
-        version: 0.4.0(vitest@4.1.4(@types/node@22.19.13)(vite@6.4.2(@types/node@22.19.13)))
       '@sveltejs/package':
         specifier: ^2.5.7
         version: 2.5.7(svelte@5.55.4)(typescript@5.9.3)
@@ -202,11 +199,6 @@ packages:
     engines: {node: '>=18'}
     cpu: [x64]
     os: [win32]
-
-  '@fast-check/vitest@0.4.0':
-    resolution: {integrity: sha512-uv/x7EyT9/fRM0oxNP2myhxHtB1pZyHYMMLVoBGFff57cyINSGftPf3ZhqNzww7ajn/ufr/Bx6OPXX/TUFezmQ==}
-    peerDependencies:
-      vitest: ^4.1.0
 
   '@jridgewell/gen-mapping@0.3.13':
     resolution: {integrity: sha512-2kkt/7niJ6MgEPxF0bYdQ6etZaA+fQvDcLKckhy1yIQOzaoKjBBjSj63/aLVjYE3qhRt5dvM+uUyfCg6UKCBbA==}
@@ -875,11 +867,6 @@ snapshots:
 
   '@esbuild/win32-x64@0.25.12':
     optional: true
-
-  '@fast-check/vitest@0.4.0(vitest@4.1.4(@types/node@22.19.13)(vite@6.4.2(@types/node@22.19.13)))':
-    dependencies:
-      fast-check: 3.23.2
-      vitest: 4.1.4(@types/node@22.19.13)(vite@6.4.2(@types/node@22.19.13))
 
   '@jridgewell/gen-mapping@0.3.13':
     dependencies:
