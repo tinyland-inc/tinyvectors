@@ -5,42 +5,20 @@ on:
     tags:
       - 'v*'
 
-permissions:
-  contents: read
-  id-token: write
-
 jobs:
-  publish:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 9.15.9
-          run_install: false
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          registry-url: https://registry.npmjs.org
-
-      - uses: bazelbuild/setup-bazelisk@v3
-
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run check:release-metadata
-      - run: bazelisk build //:pkg //:typecheck //:test --verbose_failures
-      - run: npm pack --dry-run ./bazel-bin/pkg
-        env:
-          npm_config_cache: ${{ runner.temp }}/npm-cache
-      - run: npm publish --dry-run --ignore-scripts --access public ./bazel-bin/pkg
-        env:
-          npm_config_cache: ${{ runner.temp }}/npm-cache
-
-      - name: Publish to npm
-        run: |
-          npm whoami
-          npm publish --ignore-scripts --provenance --access public ./bazel-bin/pkg
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+  package:
+    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@jess/tin-164-add-bazel-js-package-workflow
+    with:
+      node_versions: '["22"]'
+      publish_node_version: "22"
+      pnpm_version: "9.15.9"
+      metadata_check_command: pnpm run check:release-metadata
+      typecheck_command: pnpm run check
+      unit_test_command: pnpm run test
+      build_command: pnpm run build
+      package_check_command: pnpm run check:package
+      bazel_targets: "//:pkg //:typecheck //:test"
+      package_dir: ./bazel-bin/pkg
+      npm_access: public
+      dry_run: false
+    secrets: inherit
