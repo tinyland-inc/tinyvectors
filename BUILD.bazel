@@ -4,18 +4,14 @@ BUILD.bazel for @tummycrypt/tinyvectors.
 Hybrid build for a package containing both pure TypeScript (core/, motion/, themes/,
 workers/) and Svelte components (svelte/).
 
-  Standalone: cd packages/tinyvectors && pnpm build (uses vite build)
-  Monorepo:   bazel build //packages/tinyvectors/...
+  Standalone: pnpm build
+  Bazel:      bazel build //:pkg
 
 Build strategy:
   - js_run_binary wrapping `vite build` for the full package (handles .svelte
     components, Svelte runes, Web Workers, and tree-shaking in a single pass)
   - svelte-check for type validation (covers .svelte + .ts files)
   - vitest for PBT tests (property-based tests using fast-check)
-
-NOTE: The PBT tests depend on fast-check ^3.23.0 (package-local) while the
-monorepo root has fast-check ^4. This version mismatch is tracked but not yet
-resolved -- pnpm workspace hoisting handles it for now.
 """
 
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary")
@@ -62,7 +58,6 @@ js_run_binary(
         "tsconfig.json",
         "vite.config.ts",
         ":node_modules",
-        "//packages:tsconfig_base",
     ],
     args = [
         "build",
@@ -88,11 +83,12 @@ npm_package(
     name = "pkg",
     srcs = [
         "package.json",
+        "README.md",
         "LICENSE",
         ":tinyvectors",
     ],
     package = "@tummycrypt/tinyvectors",
-    version = "0.1.0",
+    version = "0.2.3",
     visibility = ["//visibility:public"],
 )
 
@@ -150,7 +146,6 @@ js_run_binary(
     ]) + [
         "tsconfig.json",
         ":node_modules",
-        "//packages:tsconfig_base",
     ],
     args = [
         "--tsconfig",

@@ -2,14 +2,12 @@
 MODULE.bazel for standalone Bazel consumption of @tummycrypt/tinyvectors.
 
 Usage from external repo:
-  bazel_dep(name = "tummycrypt_tinyvectors", version = "0.1.0")
-
-For monorepo development, this is overridden by local_path_override in the root MODULE.bazel.
+  bazel_dep(name = "tummycrypt_tinyvectors", version = "0.2.3")
 """
 
 module(
     name = "tummycrypt_tinyvectors",
-    version = "0.1.0",
+    version = "0.2.3",
     compatibility_level = 1,
 )
 
