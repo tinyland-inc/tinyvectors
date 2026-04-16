@@ -5,7 +5,7 @@
     "emitDeclarationOnly": true,
     "declaration": true,
     "declarationMap": true,
-    "outDir": "dist",
+    "outDir": "dist-types",
     "skipLibCheck": true,
     "types": ["svelte", "node"]
   }

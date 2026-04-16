@@ -17,6 +17,9 @@ Build strategy:
 load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary")
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@npm//:defs.bzl", "npm_link_all_packages")
+load("@npm//:svelte-check/package_json.bzl", svelte_check_bin = "bin")
+load("@npm//:typescript/package_json.bzl", typescript_bin = "bin")
+load("@npm//:vite/package_json.bzl", vite_bin = "bin")
 load("@npm//:vitest/package_json.bzl", vitest_bin = "bin")
 
 # =============================================================================
@@ -25,20 +28,18 @@ load("@npm//:vitest/package_json.bzl", vitest_bin = "bin")
 
 npm_link_all_packages(name = "node_modules")
 
+vite_bin.vite_binary(name = "vite")
+typescript_bin.tsc_binary(name = "tsc")
+svelte_check_bin.svelte_check_binary(name = "svelte_check")
+
 
 # =============================================================================
-# Vite library build
+# JavaScript package build
 #
-# Uses `vite build` to compile the full package including:
+# Uses `vite build` to compile the runtime package surface:
 #   - Pure TypeScript (core/, motion/, themes/, workers/)
 #   - Svelte 5 components with runes mode (svelte/)
 #   - Web Worker bundling (workers/physics.worker.ts)
-#   - ES module output with preserveModules for tree-shaking
-#
-# This is preferred over ts_project alone because:
-#   1. Svelte components require the vite-plugin-svelte compiler
-#   2. Web Workers need special bundling (not plain tsc output)
-#   3. The existing vite.config.ts handles all entry points correctly
 # =============================================================================
 
 js_run_binary(
@@ -55,7 +56,9 @@ js_run_binary(
         ],
     ) + [
         "package.json",
+        "pnpm-lock.yaml",
         "tsconfig.json",
+        "tsconfig.declarations.json",
         "vite.config.ts",
         ":node_modules",
     ],
@@ -66,9 +69,32 @@ js_run_binary(
     visibility = ["//visibility:public"],
 )
 
+js_run_binary(
+    name = "tinyvectors_declarations",
+    tool = "//:tsc",
+    srcs = glob([
+        "src/**/*.ts",
+    ]) + [
+        "package.json",
+        "pnpm-lock.yaml",
+        "tsconfig.json",
+        "tsconfig.declarations.json",
+        ":node_modules",
+    ],
+    args = [
+        "-p",
+        "tsconfig.declarations.json",
+    ],
+    out_dirs = ["dist-types"],
+    visibility = ["//visibility:public"],
+)
+
 js_library(
     name = "tinyvectors",
-    srcs = [":tinyvectors_build"],
+    srcs = [
+        ":tinyvectors_build",
+        ":tinyvectors_declarations",
+    ],
     visibility = ["//visibility:public"],
 )
 
@@ -85,6 +111,7 @@ npm_package(
         "package.json",
         "README.md",
         "LICENSE",
+        "src/themes/vector-colors.css",
         ":tinyvectors",
     ],
     package = "@tummycrypt/tinyvectors",
@@ -112,6 +139,7 @@ vitest_bin.vitest_test(
         "tests/**/*.ts",
     ]) + [
         "package.json",
+        "pnpm-lock.yaml",
         "tsconfig.json",
         "vitest.config.ts",
         ":node_modules",
@@ -145,12 +173,14 @@ js_run_binary(
         "src/**/*.svelte",
     ]) + [
         "tsconfig.json",
+        "pnpm-lock.yaml",
         ":node_modules",
     ],
     args = [
         "--tsconfig",
         "tsconfig.json",
     ],
+    stdout = "typecheck.log",
     visibility = ["//visibility:public"],
 )
 
@@ -161,6 +191,8 @@ js_run_binary(
 exports_files(
     [
         "package.json",
+        "pnpm-lock.yaml",
+        "tsconfig.declarations.json",
         "tsconfig.json",
         "vitest.config.ts",
         "vite.config.ts",

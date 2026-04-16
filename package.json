@@ -33,31 +33,32 @@
   "svelte": "./dist/svelte/index.js",
   "exports": {
     ".": {
-      "types": "./dist/index.d.ts",
+      "types": "./dist-types/index.d.ts",
       "svelte": "./dist/svelte/index.js",
       "default": "./dist/index.js"
     },
     "./core": {
-      "types": "./dist/core/index.d.ts",
+      "types": "./dist-types/core/index.d.ts",
       "default": "./dist/core/index.js"
     },
     "./motion": {
-      "types": "./dist/motion/index.d.ts",
+      "types": "./dist-types/motion/index.d.ts",
       "default": "./dist/motion/index.js"
     },
     "./themes": {
-      "types": "./dist/themes/index.d.ts",
+      "types": "./dist-types/themes/index.d.ts",
       "default": "./dist/themes/index.js"
     },
     "./themes/css": "./src/themes/vector-colors.css",
     "./svelte": {
-      "types": "./dist/svelte/index.d.ts",
+      "types": "./dist-types/svelte/index.d.ts",
       "svelte": "./dist/svelte/index.js",
       "default": "./dist/svelte/index.js"
     }
   },
   "files": [
     "dist",
+    "dist-types",
     "src/themes/vector-colors.css",
     "!dist/**/*.test.*",
     "!dist/**/*.spec.*"
@@ -97,6 +98,11 @@
     "registry": "https://registry.npmjs.org/",
     "access": "public",
     "provenance": true
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild"
+    ]
   },
   "engines": {
     "node": ">=22.0.0"

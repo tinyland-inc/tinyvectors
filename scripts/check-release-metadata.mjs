@@ -6,6 +6,7 @@ const read = (relativePath) =>
 const packageJson = JSON.parse(read('../package.json'));
 const moduleBazel = read('../MODULE.bazel');
 const buildBazel = read('../BUILD.bazel');
+const expectedPnpmVersion = packageJson.packageManager?.replace(/^pnpm@/, '');
 
 const extract = (source, pattern, label) => {
 	const match = source.match(pattern);
@@ -31,6 +32,11 @@ const checks = [
 		actual: extract(buildBazel, /npm_package\([\s\S]*?package = "([^"]+)"/m, 'npm_package name'),
 		expected: packageJson.name,
 	},
+	{
+		label: 'MODULE.bazel pnpm version',
+		actual: extract(moduleBazel, /pnpm_version = "([^"]+)"/, 'pnpm_version'),
+		expected: expectedPnpmVersion,
+	},
 ];
 
 const failures = checks.filter((check) => check.actual !== check.expected);
@@ -44,4 +50,6 @@ if (failures.length > 0) {
 	process.exit(1);
 }
 
-console.log(`release metadata aligned for ${packageJson.name}@${packageJson.version}`);
+console.log(
+	`release metadata aligned for ${packageJson.name}@${packageJson.version} (pnpm ${expectedPnpmVersion})`,
+);
