@@ -1,0 +1,69 @@
+name: Verify
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  workspace:
+    name: Workspace checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check:release-metadata
+      - run: pnpm run build
+      - run: pnpm run check
+      - run: pnpm run test
+      - run: pnpm run check:package
+      - run: npm pack --dry-run
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-cache
+
+  bazel:
+    name: Bazel package checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9.15.9
+          run_install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - uses: bazelbuild/setup-bazelisk@v3
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run check:release-metadata
+      - run: bazelisk build //:pkg //:typecheck //:test --verbose_failures
+      - run: npm pack --dry-run ./bazel-bin/pkg
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-cache
+      - run: npm publish --dry-run --ignore-scripts --access public ./bazel-bin/pkg
+        env:
+          npm_config_cache: ${{ runner.temp }}/npm-cache
