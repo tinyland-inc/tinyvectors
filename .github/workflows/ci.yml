@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   package:
-    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@jess/tin-164-add-bazel-js-package-workflow
+    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@51b1727b6977aa26b82604d7e6455f6d1ef1e9f2
     with:
       node_versions: '["22"]'
       publish_node_version: "22"
