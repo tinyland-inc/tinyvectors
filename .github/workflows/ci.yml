@@ -1,9 +1,15 @@
-name: Publish to npm
+name: Verify
 
 on:
+  pull_request:
   push:
-    tags:
-      - 'v*'
+    branches:
+      - main
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   package:
@@ -20,5 +26,5 @@ jobs:
       bazel_targets: "//:pkg //:typecheck //:test"
       package_dir: ./bazel-bin/pkg
       npm_access: public
-      dry_run: false
+      dry_run: true
     secrets: inherit

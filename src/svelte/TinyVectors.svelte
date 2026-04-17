@@ -48,8 +48,8 @@
 	let isMobileDevice = $state(false);
 	let hasAccelerometerAccess = $state(false);
 
-	// Non-reactive state (no $state needed - these don't trigger re-renders)
-	let physics: BlobPhysics | null = null;
+	// Internal handles that are passed into child components need to stay reactive.
+	let physics = $state<BlobPhysics | null>(null);
 	let animationFrame: number | null = null;
 	let lastTime = 0;
 	let deviceMotion: DeviceMotion | null = null;
@@ -75,6 +75,10 @@
 		deformationSpeed: 0.5,
 		territoryStrength: 0.1,
 		viscosity: 0.3,
+		useSpatialHash: true,
+		useGaussianSmoothing: true,
+		useSpringSystem: true,
+		springConfig: {},
 	};
 
 	// Detect mobile device
