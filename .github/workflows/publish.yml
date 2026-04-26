@@ -7,7 +7,7 @@ on:
 
 jobs:
   package:
-    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@0e13cc4e50b191f48191f08b3db081307d3447ce
+    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@21e0093a7586931ee69d716387e00556c6da7738
     with:
       runner_mode: hosted
       workspace_mode: isolated
