@@ -82,7 +82,6 @@
     "svelte": "^5.0.0"
   },
   "devDependencies": {
-    "@fast-check/vitest": "^0.4.0",
     "@sveltejs/package": "^2.5.7",
     "@sveltejs/vite-plugin-svelte": "^5.1.1",
     "@types/node": "^22.0.0",

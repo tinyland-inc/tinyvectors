@@ -4,8 +4,7 @@
 
 
 
-import { describe, expect, beforeEach } from 'vitest';
-import { it } from '@fast-check/vitest';
+import { describe, expect, beforeEach, it } from 'vitest';
 import * as fc from 'fast-check';
 
 import { GaussianKernel } from '../../src/core/GaussianKernel.js';
@@ -33,12 +32,25 @@ import {
 	createBlobAt,
 } from './arbitraries.js';
 
+const prop = <TArgs extends unknown[]>(
+	arbitraries: { [K in keyof TArgs]: fc.Arbitrary<TArgs[K]> },
+	name: string,
+	predicate: (...args: TArgs) => boolean,
+) => {
+	it(name, () => {
+		fc.assert(
+			fc.property(...arbitraries, (...args) => {
+				expect(predicate(...args)).toBe(true);
+			}),
+		);
+	});
+};
 
 
 
 
 describe('Gaussian Kernel Invariants', () => {
-	it.prop([kernelSizeArb, sigmaArb])(
+	prop([kernelSizeArb, sigmaArb],
 		'INVARIANT: Kernel weights sum to 1.0 (normalized)',
 		(size, sigma) => {
 			const kernel = new GaussianKernel(size, sigma);
@@ -54,7 +66,7 @@ describe('Gaussian Kernel Invariants', () => {
 		}
 	);
 
-	it.prop([kernelSizeArb, sigmaArb])(
+	prop([kernelSizeArb, sigmaArb],
 		'INVARIANT: Kernel is symmetric',
 		(size, sigma) => {
 			const kernel = new GaussianKernel(size, sigma);
@@ -70,7 +82,7 @@ describe('Gaussian Kernel Invariants', () => {
 		}
 	);
 
-	it.prop([controlPointsArrayArb(8), kernelSizeArb, sigmaArb])(
+	prop([controlPointsArrayArb(8), kernelSizeArb, sigmaArb],
 		'INVARIANT: Gaussian smoothing reduces radius variance',
 		(points, size, sigma) => {
 			const radii = points.map((p) => p.radius);
@@ -87,7 +99,7 @@ describe('Gaussian Kernel Invariants', () => {
 		}
 	);
 
-	it.prop([controlPointsArrayArb(8)])(
+	prop([controlPointsArrayArb(8)],
 		'INVARIANT: Smoothing preserves mean radius',
 		(points) => {
 			const radii = points.map((p) => p.radius);
@@ -110,7 +122,7 @@ describe('Gaussian Kernel Invariants', () => {
 
 
 describe('Spatial Hash Invariants', () => {
-	it.prop([blobsArrayArb(5), positionArb, queryRadiusArb])(
+	prop([blobsArrayArb(5), positionArb, queryRadiusArb],
 		'INVARIANT: Spatial hash returns superset of brute force results',
 		(blobs, pos, radius) => {
 			const hash = new SpatialHash(50);
@@ -132,7 +144,7 @@ describe('Spatial Hash Invariants', () => {
 		}
 	);
 
-	it.prop([blobsArrayArb(6), cellSizeArb])(
+	prop([blobsArrayArb(6), cellSizeArb],
 		'INVARIANT: Rebuild is idempotent',
 		(blobs, cellSize) => {
 			const hash = new SpatialHash(cellSize);
@@ -147,7 +159,7 @@ describe('Spatial Hash Invariants', () => {
 		}
 	);
 
-	it.prop([blobsArrayArb(4)])(
+	prop([blobsArrayArb(4)],
 		'INVARIANT: getAllPairs returns each pair exactly once',
 		(blobs) => {
 			
@@ -197,7 +209,7 @@ describe('Spring System Invariants', () => {
 		springSystem = new SpringSystem();
 	});
 
-	it.prop([controlPointsArrayArb(8), deltaTimeArb])(
+	prop([controlPointsArrayArb(8), deltaTimeArb],
 		'INVARIANT: Spring force creates restoring velocity toward baseRadius',
 		(points, dt) => {
 			const velocities = createControlPointVelocities(points.length);
@@ -222,7 +234,7 @@ describe('Spring System Invariants', () => {
 		}
 	);
 
-	it.prop([controlPointsArrayArb(8)])(
+	prop([controlPointsArrayArb(8)],
 		'INVARIANT: System energy decreases over time (damping)',
 		(points) => {
 			
@@ -250,7 +262,7 @@ describe('Spring System Invariants', () => {
 		}
 	);
 
-	it.prop([controlPointsArrayArb(8)])(
+	prop([controlPointsArrayArb(8)],
 		'INVARIANT: System energy bounded and decays toward equilibrium',
 		(points) => {
 			
@@ -288,7 +300,7 @@ describe('Spring System Invariants', () => {
 
 
 describe('Area Conservation Invariants', () => {
-	it.prop([controlPointsArrayArb(8)])(
+	prop([controlPointsArrayArb(8)],
 		'INVARIANT: enforceAreaConservation brings area to target',
 		(points) => {
 			
@@ -311,7 +323,7 @@ describe('Area Conservation Invariants', () => {
 		}
 	);
 
-	it.prop([controlPointsArrayArb(8)])(
+	prop([controlPointsArrayArb(8)],
 		'INVARIANT: Polygon area is always positive',
 		(points) => {
 			const area = computePolygonArea(points);
@@ -325,7 +337,7 @@ describe('Area Conservation Invariants', () => {
 
 
 describe('Circularity Invariants', () => {
-	it.prop([controlPointsArrayArb(8)])(
+	prop([controlPointsArrayArb(8)],
 		'INVARIANT: Circularity is between 0 and 1',
 		(points) => {
 			const circularity = computeCircularity(points);
@@ -350,7 +362,7 @@ describe('Circularity Invariants', () => {
 		expect(circularity).toBeCloseTo(1.0, 2);
 	});
 
-	it.prop([controlPointsArrayArb(8)])(
+	prop([controlPointsArrayArb(8)],
 		'INVARIANT: Smoothing increases circularity',
 		(points) => {
 			
@@ -379,7 +391,7 @@ describe('Circularity Invariants', () => {
 
 
 describe('Blob Physics Integration', () => {
-	it.prop([fullBlobArb])(
+	prop([fullBlobArb],
 		'INVARIANT: Blob position bounded after many updates',
 		(blob) => {
 			const PHYSICS_MIN = -40;
