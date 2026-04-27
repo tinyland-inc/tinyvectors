@@ -8,7 +8,11 @@
     flake-utils.lib.eachDefaultSystem (system:
       let pkgs = nixpkgs.legacyPackages.${system}; in {
         devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [ bazel_8 nodejs_22 (pnpm_10 or pnpm) ];
+          buildInputs = [
+            pkgs.bazel_8
+            pkgs.nodejs_22
+            (pkgs.pnpm_9 or pkgs.pnpm)
+          ];
           shellHook = ''
             echo "tinyvectors dev shell"
             echo "  node $(node --version)"

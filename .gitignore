@@ -4,5 +4,3 @@ coverage/
 node_modules/
 bazel-*
 *.tsbuildinfo
-bazel-*
-MODULE.bazel.lock
