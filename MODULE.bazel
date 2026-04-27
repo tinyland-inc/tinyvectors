@@ -2,12 +2,12 @@
 MODULE.bazel for standalone Bazel consumption of @tummycrypt/tinyvectors.
 
 Usage from external repo:
-  bazel_dep(name = "tummycrypt_tinyvectors", version = "0.2.3")
+  bazel_dep(name = "tummycrypt_tinyvectors", version = "0.2.4")
 """
 
 module(
     name = "tummycrypt_tinyvectors",
-    version = "0.2.3",
+    version = "0.2.4",
     compatibility_level = 1,
 )
 
