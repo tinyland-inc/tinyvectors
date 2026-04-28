@@ -64,6 +64,8 @@ js_run_binary(
     ],
     args = [
         "build",
+        "--config",
+        "$(execpath vite.config.ts)",
     ],
     out_dirs = ["dist"],
     visibility = ["//visibility:public"],
@@ -83,7 +85,7 @@ js_run_binary(
     ],
     args = [
         "-p",
-        "tsconfig.declarations.json",
+        "$(execpath tsconfig.declarations.json)",
     ],
     out_dirs = ["dist-types"],
     visibility = ["//visibility:public"],
@@ -177,7 +179,7 @@ js_run_binary(
     ],
     args = [
         "--tsconfig",
-        "tsconfig.json",
+        "$(execpath tsconfig.json)",
     ],
     stdout = "typecheck.log",
     visibility = ["//visibility:public"],
