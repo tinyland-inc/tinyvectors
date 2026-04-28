@@ -5,6 +5,12 @@ on:
     tags:
       - 'v*'
 
+permissions:
+  actions: read
+  contents: read
+  id-token: write
+  packages: write
+
 jobs:
   package:
     uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@21e0093a7586931ee69d716387e00556c6da7738
