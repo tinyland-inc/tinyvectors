@@ -2,6 +2,15 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 
+function outputFileName(chunkName: string): string {
+	const withoutSvelte = chunkName.replace(/\.svelte$/, '');
+	const srcIndex = withoutSvelte.lastIndexOf('/src/');
+	const packageRelative =
+		srcIndex >= 0 ? withoutSvelte.slice(srcIndex + '/src/'.length) : withoutSvelte.replace(/^src\//, '');
+
+	return `${packageRelative.replace(/^\/+/, '')}.js`;
+}
+
 export default defineConfig({
 	plugins: [
 		svelte({
@@ -32,14 +41,8 @@ export default defineConfig({
 				// Strip .svelte from compiled output filenames to prevent
 				// downstream vite-plugin-svelte from re-processing them.
 				// BlobSVG.svelte → BlobSVG.js (not BlobSVG.svelte.js)
-				entryFileNames: (chunkInfo) => {
-					const name = chunkInfo.name.replace(/\.svelte$/, '');
-					return `${name}.js`;
-				},
-				chunkFileNames: (chunkInfo) => {
-					const name = chunkInfo.name.replace(/\.svelte$/, '');
-					return `${name}.js`;
-				},
+				entryFileNames: (chunkInfo) => outputFileName(chunkInfo.name),
+				chunkFileNames: (chunkInfo) => outputFileName(chunkInfo.name),
 				assetFileNames: '[name][extname]',
 			},
 			treeshake: {
