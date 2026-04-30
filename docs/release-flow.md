@@ -31,15 +31,13 @@ npm publish --dry-run --ignore-scripts --access public ./bazel-bin/pkg
 
 `//:package_consumer_check` and `pnpm run check:package-consumer` both validate the Bazel-built package as an installed consumer would. The pnpm command expects `./bazel-bin/pkg` to exist. It links that package into a temporary consumer workspace with the Svelte peer dependency, verifies runtime subpath exports, and runs TypeScript against the packaged declarations.
 
-`pnpm run check:bundle-size` measures a realistic tree-shaken consumer import, `import { TinyVectors } from '@tummycrypt/tinyvectors'`, with Svelte externalized as a peer dependency. `//:bundle_size_check` runs the same measurement against the Bazel-built package artifact. The current Phase A gate is 12 KiB gzip and the target remains 11 KiB gzip, so the check reports target headroom or overage while leaving a small CI buffer.
+`pnpm run check:bundle-size` measures a realistic tree-shaken consumer import, `import { TinyVectors } from '@tummycrypt/tinyvectors'`, with Svelte externalized as a peer dependency. `//:bundle_size_check` runs the same measurement against the Bazel-built package artifact. The current gate is 12 KiB gzip and the target remains 11 KiB gzip, so the check reports target headroom or overage while leaving a small CI buffer.
 
 `bazel query //...` should also work locally. `.bazelignore` excludes direnv, Nix, package-manager, and build-output directories so Bazel does not walk generated local artifacts.
 
 ## Compatibility Notes
 
-Carry these notes into the v0.3 release notes:
-
-- Blob gradient stop opacity now uses the renderer-private `--tvi` custom property. Consumers overriding the previous `--tv-blob-intensity` property must migrate that override.
+The v0.3 branch currently keeps the renderer-private `--tv-blob-intensity` custom property used by the restored three-layer renderer. Do not document a migration to `--tvi`; that abbreviation was part of the reverted gel-rendering rewrite.
 
 ## CI Flow
 
