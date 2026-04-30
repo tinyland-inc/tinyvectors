@@ -98,6 +98,14 @@
 	// — no extra EMA, no axis swap, no negation. The 0.8 magnitude scaler is
 	// preserved so gravity strength matches the previous code's feel at the
 	// physics layer.
+	//
+	// Y-gravity sign note: the previous handler computed gravityY = -beta,
+	// which made forward-tilt drive gravity UP the screen (away from the
+	// viewer). That was counter-intuitive — forward tilt should pull stuff
+	// toward the viewer (positive screen-Y, downward). TiltSource emits
+	// screen-aligned values directly, so we use motionData.y unchanged.
+	// This is the intentional fix that the canonical consumer was working
+	// around by setting enableDeviceMotion={false}.
 	const handleDeviceMotion = (motionData: { x: number; y: number; z: number }) => {
 		if (!hasAccelerometerAccess || !physics) return;
 		tiltX = motionData.x;

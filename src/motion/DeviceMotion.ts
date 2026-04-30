@@ -123,12 +123,9 @@ export class DeviceMotion {
 			if (!this.reducedMotionMql) return;
 			if (this.reducedMotionMql.matches && this.isListening) {
 				this.stopListening();
-			} else if (
-				!this.reducedMotionMql.matches &&
-				!this.isListening &&
-				typeof getPermissionApi !== 'undefined'
-			) {
+			} else if (!this.reducedMotionMql.matches && !this.isListening) {
 				// Re-engage if user disabled reduced-motion mid-session.
+				// requestPermission() handles the no-API case internally.
 				void this.requestPermission().then((ok) => {
 					if (ok) this.startListening();
 				});
