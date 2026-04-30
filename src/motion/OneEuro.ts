@@ -31,7 +31,11 @@ export class OneEuro {
 	private prevX: number | undefined;
 	private prevT: number | undefined;
 
-	constructor(private p: OneEuroParams) {}
+	constructor(private p: OneEuroParams) {
+		if (p.minCutoff <= 0 || p.dCutoff <= 0) {
+			throw new RangeError('OneEuro: minCutoff and dCutoff must be > 0');
+		}
+	}
 
 	/** Filter sample `x` at time `tMs` (milliseconds). */
 	filter(x: number, tMs: number): number {
@@ -40,6 +44,7 @@ export class OneEuro {
 			this.prevX = x;
 			return this.x.filter(x, 1);
 		}
+		// tMs must be monotonically non-decreasing; backward jumps clamp to 1 ms.
 		const dt = Math.max(1e-3, (tMs - this.prevT) / 1000);
 		const dxRaw = (x - this.prevX) / dt;
 		const dxHat = this.dx.filter(dxRaw, alpha(this.p.dCutoff, dt));
