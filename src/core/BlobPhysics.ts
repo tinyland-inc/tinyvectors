@@ -742,36 +742,54 @@ export class BlobPhysics {
 		}
 	}
 
+	// Soft-wall force: continuous penetration-based restoring force, no
+	// specular reflection or position snap. Edges deform along the wall
+	// (the blob "flattens") rather than bouncing — the gel cue.
 	private handleWallBouncing(blob: ConvexBlob): void {
 		const margin = blob.size * 0.8;
-		const damping = this.config.bounceDamping;
+		const yMargin = margin * 1.5;
+		const k = 0.08;
 		const currentTime = Date.now();
 
-		
-		if (blob.currentX < this.PHYSICS_MIN + margin) {
-			blob.currentX = this.PHYSICS_MIN + margin;
-			blob.velocityX = Math.abs(blob.velocityX) * damping;
+		const minX = this.PHYSICS_MIN + margin;
+		const maxX = this.PHYSICS_MAX - margin;
+		const minY = this.PHYSICS_MIN + yMargin;
+		const maxY = this.PHYSICS_MAX - yMargin;
+
+		const px =
+			Math.max(0, minX - blob.currentX) - Math.max(0, blob.currentX - maxX);
+		const py =
+			Math.max(0, minY - blob.currentY) - Math.max(0, blob.currentY - maxY);
+
+		if (px !== 0) blob.velocityX += k * px;
+		if (py !== 0) blob.velocityY += k * py;
+
+		// Hard outer clamp — far outside the soft band, snap back so the
+		// blob can never escape the canvas under extreme dt or large
+		// external forces. Records a bounce so existing time-since-bounce
+		// logic continues to work.
+		const hardMargin = blob.size * 0.2;
+		const hardMinX = this.PHYSICS_MIN + hardMargin;
+		const hardMaxX = this.PHYSICS_MAX - hardMargin;
+		const hardMinY = this.PHYSICS_MIN + hardMargin;
+		const hardMaxY = this.PHYSICS_MAX - hardMargin;
+
+		if (blob.currentX < hardMinX) {
+			blob.currentX = hardMinX;
+			blob.velocityX = Math.abs(blob.velocityX) * 0.5;
+			this.recordBounce(blob, currentTime);
+		} else if (blob.currentX > hardMaxX) {
+			blob.currentX = hardMaxX;
+			blob.velocityX = -Math.abs(blob.velocityX) * 0.5;
 			this.recordBounce(blob, currentTime);
 		}
-
-		
-		if (blob.currentX > this.PHYSICS_MAX - margin) {
-			blob.currentX = this.PHYSICS_MAX - margin;
-			blob.velocityX = -Math.abs(blob.velocityX) * damping;
+		if (blob.currentY < hardMinY) {
+			blob.currentY = hardMinY;
+			blob.velocityY = Math.abs(blob.velocityY) * 0.5;
 			this.recordBounce(blob, currentTime);
-		}
-
-		
-		if (blob.currentY < this.PHYSICS_MIN + margin * 1.5) {
-			blob.currentY = this.PHYSICS_MIN + margin * 1.5;
-			blob.velocityY = Math.abs(blob.velocityY) * damping;
-			this.recordBounce(blob, currentTime);
-		}
-
-		
-		if (blob.currentY > this.PHYSICS_MAX - margin * 1.5) {
-			blob.currentY = this.PHYSICS_MAX - margin * 1.5;
-			blob.velocityY = -Math.abs(blob.velocityY) * damping;
+		} else if (blob.currentY > hardMaxY) {
+			blob.currentY = hardMaxY;
+			blob.velocityY = -Math.abs(blob.velocityY) * 0.5;
 			this.recordBounce(blob, currentTime);
 		}
 	}
