@@ -3,16 +3,19 @@
 	import type { BlobPhysics } from '../core/BlobPhysics.js';
 	import type { ConvexBlob } from '../core/types.js';
 
+	// Props using Svelte 5 $props() syntax
 	interface Props {
 		blobs?: ConvexBlob[];
 		physics?: BlobPhysics | null;
 	}
 
-	const svgId = $props.id();
 	let { blobs = [], physics = null }: Props = $props();
 
+	// Track dark mode for blend mode switching
 	let isDarkMode = $state(false);
+	let primaryBlend = $derived(isDarkMode ? 'screen' : 'multiply');
 
+	// Watch for dark mode changes
 	$effect(() => {
 		if (browser) {
 			isDarkMode = document.documentElement.classList.contains('dark');
@@ -31,166 +34,98 @@
 		}
 	});
 
+	// Generate simple circle path (fast) - used for glow/core layers
 	function getCirclePath(cx: number, cy: number, r: number): string {
 		return `M ${cx - r},${cy} A ${r},${r} 0 1,1 ${cx + r},${cy} A ${r},${r} 0 1,1 ${cx - r},${cy}`;
 	}
 
+	// Generate organic path for main blob body only
 	function getBlobPath(blob: ConvexBlob): string {
 		if (physics && blob.controlPoints && blob.controlPoints.length > 0) {
 			return physics.generateSmoothBlobPath(blob);
 		}
 		return getCirclePath(blob.currentX, blob.currentY, blob.size);
 	}
-
-	function getDefinitionId(name: string): string {
-		return `${svgId}-${name}`;
-	}
-
-	function getBlobDefinitionId(blob: ConvexBlob, name: string): string {
-		return `${svgId}-${blob.gradientId}-${name}`;
-	}
 </script>
 
+<!-- Extended viewBox for margin overflow -->
 <svg
 	width="100%"
 	height="100%"
 	viewBox="-33 -33 133 133"
 	preserveAspectRatio="xMidYMid slice"
-	shape-rendering="geometricPrecision"
-	color-interpolation="sRGB"
-	style:display="block"
-	style:width="100%"
-	style:height="100%"
+	class="h-full w-full"
 >
 	<defs>
-		<filter
-			id={getDefinitionId('glow-filter')}
-			x="-90"
-			y="-90"
-			width="260"
-			height="260"
-			filterUnits="userSpaceOnUse"
-			color-interpolation-filters="sRGB"
-		>
-			<feGaussianBlur in="SourceGraphic" stdDeviation="4.8" result="glow" />
+		<!-- Simple glow filter -->
+		<filter id="glowFilter" x="-100%" y="-100%" width="300%" height="300%">
+			<feGaussianBlur in="SourceGraphic" stdDeviation="4.0" result="glow" />
 		</filter>
 
-		<filter
-			id={getDefinitionId('soft-edge-filter')}
-			x="-70"
-			y="-70"
-			width="220"
-			height="220"
-			filterUnits="userSpaceOnUse"
-			color-interpolation-filters="sRGB"
-		>
-			<feGaussianBlur in="SourceGraphic" stdDeviation="0.95" result="soft" />
+		<!-- Soft edge filter -->
+		<filter id="softEdge" x="-50%" y="-50%" width="200%" height="200%">
+			<feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="soft" />
 		</filter>
 
 		<!--
-			Each gradient sets --tvi once; stops use calc().
-			This keeps the richer gel layers while preserving the Phase A
-			per-frame Svelte expression reduction.
+			Gradients for each blob. Each <radialGradient> sets
+			--tv-blob-intensity inline once; the contained <stop>s
+			compute their own opacity via calc(). Reduces per-frame
+			reactive evaluations from ~12 stop-opacity expressions
+			per blob to a single inline-style assignment.
 		-->
-		{#each blobs as blob (blob.gradientId)}
-			<radialGradient
-				id={getBlobDefinitionId(blob, 'glow')}
-				cx="48%"
-				cy="46%"
-				r="82%"
-				fx="38%"
-				fy="30%"
-				style:--tvi={blob.intensity}
-			>
-				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.48)" />
-				<stop offset="42%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.28)" />
-				<stop offset="78%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.08)" />
+		{#each blobs as blob, i (blob.gradientId)}
+			<!-- Glow gradient (outer) -->
+			<radialGradient id="{blob.gradientId}Glow" cx="50%" cy="50%" r="80%" style="--tv-blob-intensity: {blob.intensity}">
+				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.5)" />
+				<stop offset="40%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.3)" />
+				<stop offset="70%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.15)" />
 				<stop offset="100%" stop-color={blob.color} stop-opacity="0" />
 			</radialGradient>
 
-			<radialGradient
-				id={getBlobDefinitionId(blob, 'body')}
-				cx="54%"
-				cy="58%"
-				r="64%"
-				fx="38%"
-				fy="28%"
-				style:--tvi={blob.intensity}
-			>
-				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.9)" />
-				<stop offset="38%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.72)" />
-				<stop offset="72%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.34)" />
-				<stop offset="92%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.1)" />
+			<!-- Main gradient -->
+			<radialGradient id="{blob.gradientId}Main" cx="50%" cy="50%" r="50%" style="--tv-blob-intensity: {blob.intensity}">
+				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.9)" />
+				<stop offset="50%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.6)" />
+				<stop offset="80%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.3)" />
 				<stop offset="100%" stop-color={blob.color} stop-opacity="0" />
 			</radialGradient>
 
-			<radialGradient
-				id={getBlobDefinitionId(blob, 'specular')}
-				cx="34%"
-				cy="26%"
-				r="42%"
-				fx="28%"
-				fy="20%"
-				style:--tvi={blob.intensity}
-			>
-				<stop offset="0%" stop-color="#ffffff" stop-opacity="calc(var(--tvi) * 0.28)" />
-				<stop offset="36%" stop-color="#ffffff" stop-opacity="calc(var(--tvi) * 0.1)" />
-				<stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
-			</radialGradient>
-
-			<radialGradient
-				id={getBlobDefinitionId(blob, 'core')}
-				cx="58%"
-				cy="62%"
-				r="40%"
-				fx="48%"
-				fy="48%"
-				style:--tvi={blob.intensity}
-			>
-				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.9)" />
-				<stop offset="62%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.48)" />
-				<stop offset="100%" stop-color={blob.color} stop-opacity="calc(var(--tvi) * 0.12)" />
+			<!-- Core gradient (inner highlight) -->
+			<radialGradient id="{blob.gradientId}Core" cx="50%" cy="50%" r="30%" style="--tv-blob-intensity: {blob.intensity}">
+				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 1.0)" />
+				<stop offset="60%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.7)" />
+				<stop offset="100%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.3)" />
 			</radialGradient>
 		{/each}
 	</defs>
 
-	<g filter={`url(#${getDefinitionId('glow-filter')})`} opacity={isDarkMode ? 0.42 : 0.28}>
+	<!-- Layer 1: Glow halo (simple circles, blurred) -->
+	<g filter="url(#glowFilter)" opacity="0.35">
 		{#each blobs as blob (blob.gradientId)}
 			<path
-				d={getCirclePath(blob.currentX, blob.currentY, blob.size * 2.35)}
-				fill={`url(#${getBlobDefinitionId(blob, 'glow')})`}
+				d={getCirclePath(blob.currentX, blob.currentY, blob.size * 2.5)}
+				fill="url(#{blob.gradientId}Glow)"
 			/>
 		{/each}
 	</g>
 
-	<g
-		filter={`url(#${getDefinitionId('soft-edge-filter')})`}
-		style:mix-blend-mode={isDarkMode ? 'screen' : 'multiply'}
-		opacity={isDarkMode ? 0.72 : 0.78}
-	>
-		{#each blobs as blob (blob.gradientId)}
-			<path d={getBlobPath(blob)} fill={`url(#${getBlobDefinitionId(blob, 'body')})`} />
-		{/each}
-	</g>
-
-	<g style:mix-blend-mode={isDarkMode ? 'screen' : 'soft-light'} opacity={isDarkMode ? 0.18 : 0.14}>
+	<!-- Layer 2: Main blob body with organic paths -->
+	<g filter="url(#softEdge)" style:mix-blend-mode={primaryBlend} opacity="0.75">
 		{#each blobs as blob (blob.gradientId)}
 			<path
-				d={getCirclePath(
-					blob.currentX - blob.size * 0.25,
-					blob.currentY - blob.size * 0.32,
-					blob.size * 0.9,
-				)}
-				fill={`url(#${getBlobDefinitionId(blob, 'specular')})`}
+				d={getBlobPath(blob)}
+				fill="url(#{blob.gradientId}Main)"
 			/>
 		{/each}
 	</g>
 
-	<g style:mix-blend-mode={isDarkMode ? 'screen' : 'multiply'} opacity={isDarkMode ? 0.78 : 0.58}>
+	<!-- Layer 3: Core highlight (simple circles) -->
+	<g style:mix-blend-mode={primaryBlend} opacity="0.9">
 		{#each blobs as blob (blob.gradientId)}
 			<path
-				d={getCirclePath(blob.currentX, blob.currentY, blob.size * 0.58)}
-				fill={`url(#${getBlobDefinitionId(blob, 'core')})`}
+				d={getCirclePath(blob.currentX, blob.currentY, blob.size * 0.6)}
+				fill="url(#{blob.gradientId}Core)"
 			/>
 		{/each}
 	</g>

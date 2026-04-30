@@ -384,11 +384,11 @@ try {
 		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
 	})`);
 
-	assert(listenerInitial.pathCount === 32, `Expected 32 SVG paths, got ${listenerInitial.pathCount}.`);
+	assert(listenerInitial.pathCount === 24, `Expected 24 SVG paths, got ${listenerInitial.pathCount}.`);
 	assert(listenerInitial.bodyPathCount === 8, `Expected 8 body paths, got ${listenerInitial.bodyPathCount}.`);
 	assert(
-		listenerInitial.gradientCount === 32,
-		`Expected 32 radial gradients, got ${listenerInitial.gradientCount}.`,
+		listenerInitial.gradientCount === 24,
+		`Expected 24 radial gradients, got ${listenerInitial.gradientCount}.`,
 	);
 	assert(
 		listenerInitial.listeners.wheel === 1,
