@@ -169,10 +169,15 @@
 	$effect(() => {
 		if (!browser || !shouldLoad) return;
 
-		untrack(() => {
-			physics = new BlobPhysics(blobCount, physicsConfig);
+		let disposed = false;
 
-			physics.init().then(() => {
+		untrack(() => {
+			const currentPhysics = new BlobPhysics(blobCount, physicsConfig);
+			physics = currentPhysics;
+
+			currentPhysics.init().then(() => {
+				if (disposed || physics !== currentPhysics) return;
+
 				const hasDeviceMotionCapability = detectDeviceMotionCapability();
 				isReady = true;
 
@@ -209,6 +214,7 @@
 		});
 
 		return () => {
+			disposed = true;
 			stopAnimation();
 			if (enableScrollPhysics && browser) {
 				window.removeEventListener('wheel', handleScroll);
@@ -221,6 +227,8 @@
 			scrollHandler = null;
 			physics?.dispose();
 			physics = null;
+			isReady = false;
+			blobs = [];
 		};
 	});
 
