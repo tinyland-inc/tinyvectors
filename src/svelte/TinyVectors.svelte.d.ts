@@ -2,6 +2,7 @@ import type { Component } from 'svelte';
 import type { BlobPhysicsConfig } from '../core/BlobPhysics.js';
 import type { ThemePresetName } from '../core/theme-presets.js';
 import type { MotionVector } from '../motion/DeviceMotion.js';
+import type { TinyVectorsDeviceMotionStatus } from './types.js';
 
 export interface TinyVectorsProps {
 	/** Theme preset name */
@@ -37,6 +38,7 @@ export interface TinyVectorsProps {
 export interface TinyVectorsExports {
 	requestDeviceMotionPermission(): Promise<boolean>;
 	calibrateDeviceMotion(samples?: number): void;
+	getDeviceMotionStatus(): TinyVectorsDeviceMotionStatus;
 }
 
 declare const TinyVectors: Component<TinyVectorsProps, TinyVectorsExports, ''>;

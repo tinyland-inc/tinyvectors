@@ -4,6 +4,7 @@
 	import { BlobPhysics, type BlobPhysicsConfig } from '../core/BlobPhysics.js';
 	import {
 		DeviceMotion,
+		type DeviceMotionPermissionState,
 		type MotionVector,
 	} from '../motion/DeviceMotion.js';
 	import {
@@ -15,6 +16,7 @@
 	import { ScrollHandler } from '../motion/ScrollHandler.js';
 	import { THEME_PRESET_COLORS } from '../core/theme-colors.js';
 	import type { ThemePresetName } from '../core/theme-presets.js';
+	import type { TinyVectorsDeviceMotionStatus } from './types.js';
 	import BlobSVG from './BlobSVG.svelte';
 
 	interface Props {
@@ -86,6 +88,20 @@
 		return 'DeviceOrientationEvent' in window;
 	};
 
+	const getDeviceMotionCapabilityState = (): DeviceMotionPermissionState => {
+		if (!browser || typeof window === 'undefined') return 'unsupported';
+		if (!window.isSecureContext) return 'insecure';
+		return 'DeviceOrientationEvent' in window ? 'unknown' : 'unsupported';
+	};
+
+	const requiresDeviceMotionPermission = (): boolean => {
+		if (!browser || typeof window === 'undefined') return false;
+		const constructor = (window as unknown as {
+			DeviceOrientationEvent?: { requestPermission?: unknown };
+		}).DeviceOrientationEvent;
+		return typeof constructor?.requestPermission === 'function';
+	};
+
 	const createDeviceMotion = (): DeviceMotion =>
 		new DeviceMotion(handleDeviceMotion, {
 			calibrationSamples: deviceMotionCalibrationSamples,
@@ -117,6 +133,19 @@
 
 	export function calibrateDeviceMotion(samples?: number): void {
 		deviceMotion?.calibrate(samples);
+	}
+
+	export function getDeviceMotionStatus(): TinyVectorsDeviceMotionStatus {
+		const capabilityState = getDeviceMotionCapabilityState();
+		const permissionState = deviceMotion?.getPermissionState() ?? capabilityState;
+
+		return {
+			enabled: enableDeviceMotion,
+			supported: capabilityState !== 'unsupported' && capabilityState !== 'insecure',
+			requiresPermission: requiresDeviceMotionPermission(),
+			permissionState,
+			active: deviceMotion?.isActive() ?? false,
+		};
 	}
 
 	const handleScroll = (event: WheelEvent) => {

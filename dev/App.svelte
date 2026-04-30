@@ -2,10 +2,12 @@
 	import TinyVectors from '../src/svelte/TinyVectors.svelte';
 	import type { ThemePresetName } from '../src/core/schema.js';
 	import type { MotionVector } from '../src/motion/DeviceMotion.js';
+	import type { TinyVectorsDeviceMotionStatus } from '../src/svelte/types.js';
 
 	interface TinyVectorsHandle {
 		requestDeviceMotionPermission: () => Promise<boolean>;
 		calibrateDeviceMotion: (samples?: number) => void;
+		getDeviceMotionStatus: () => TinyVectorsDeviceMotionStatus;
 	}
 
 	interface Props {
@@ -38,6 +40,18 @@
 
 	export function calibrateDeviceMotion(samples?: number): void {
 		vectorLayer?.calibrateDeviceMotion(samples);
+	}
+
+	export function getDeviceMotionStatus(): TinyVectorsDeviceMotionStatus {
+		return (
+			vectorLayer?.getDeviceMotionStatus() ?? {
+				enabled: enableDeviceMotion,
+				supported: false,
+				requiresPermission: false,
+				permissionState: 'unknown',
+				active: false,
+			}
+		);
 	}
 </script>
 

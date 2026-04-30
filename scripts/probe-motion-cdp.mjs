@@ -322,6 +322,7 @@ try {
 		hasDeviceMotionEvent: 'DeviceMotionEvent' in window,
 		hasDeviceOrientationEvent: 'DeviceOrientationEvent' in window,
 		hasAccelerometer: 'Accelerometer' in window,
+		motionStatus: window.__tinyvectorsDeviceMotionStatus?.() ?? null,
 		status: document.getElementById('motion-status')?.textContent ?? null,
 		pathCount: document.querySelectorAll('path').length,
 		firstPath: document.querySelector('path')?.getAttribute('d') ?? null,
@@ -331,6 +332,13 @@ try {
 	assert(initial.secure, 'Page must be a secure context for device motion APIs.');
 	assert(initial.hasDeviceOrientationEvent, 'DeviceOrientationEvent is not exposed in Chrome.');
 	assert(initial.pathCount > 0, 'TinyVectors SVG paths were not rendered.');
+	assert(initial.motionStatus?.enabled === true, 'Device motion status did not report enabled.');
+	assert(initial.motionStatus?.supported === true, 'Device motion status did not report support.');
+	assert(
+		initial.motionStatus?.permissionState === 'granted',
+		`Device motion status did not report granted; got ${initial.motionStatus?.permissionState}.`,
+	);
+	assert(initial.motionStatus?.active === true, 'Device motion status did not report active listener.');
 
 	await client.send('Runtime.evaluate', {
 		expression: `document.getElementById('spoof-tilt-btn')?.click()`,
@@ -503,6 +511,7 @@ try {
 					hasDeviceMotionEvent: initial.hasDeviceMotionEvent,
 					hasDeviceOrientationEvent: initial.hasDeviceOrientationEvent,
 					hasAccelerometer: initial.hasAccelerometer,
+					motionStatus: initial.motionStatus,
 					pathCount: initial.pathCount,
 				},
 				syntheticOrientation: {

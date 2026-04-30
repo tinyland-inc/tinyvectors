@@ -85,7 +85,12 @@ import {
 \ttype PointerBounds,
 } from '@tummycrypt/tinyvectors/motion';
 import { getThemePreset } from '@tummycrypt/tinyvectors/themes';
-import { BlobSVG, type BlobSVGProps, type TinyVectorsProps } from '@tummycrypt/tinyvectors/svelte';
+import {
+\tBlobSVG,
+\ttype BlobSVGProps,
+\ttype TinyVectorsDeviceMotionStatus,
+\ttype TinyVectorsProps,
+} from '@tummycrypt/tinyvectors/svelte';
 import type { ComponentProps } from 'svelte';
 
 const bounds: PointerBounds = { left: 0, top: 0, width: 100, height: 100 };
@@ -93,10 +98,17 @@ const point = mapClientPointToPhysics(50, 50, bounds);
 const sample: MotionVector = { x: 0, y: 0, z: 1 };
 const props: ComponentProps<typeof TinyVectors> = { theme: 'tinyland', enableDeviceMotion: true };
 const explicitProps: TinyVectorsProps = props;
+const motionStatus: TinyVectorsDeviceMotionStatus = {
+\tenabled: true,
+\tsupported: true,
+\trequiresPermission: false,
+\tpermissionState: 'granted',
+\tactive: true,
+};
 const blobProps: BlobSVGProps = { blobs: [] };
 const themeName: ThemePresetName = 'tinyland';
 const themePreset: ThemePreset = THEME_PRESETS[themeName];
-const names = [BlobPhysics, DeviceMotion, TinyVectors, BlobSVG, ScrollHandler, createPointerPhysicsController, THEME_PRESETS, getThemePreset, point, sample, explicitProps, blobProps, themePreset];
+const names = [BlobPhysics, DeviceMotion, TinyVectors, BlobSVG, ScrollHandler, createPointerPhysicsController, THEME_PRESETS, getThemePreset, point, sample, explicitProps, motionStatus, blobProps, themePreset];
 console.log(names.length);
 `.trimStart(),
 	);

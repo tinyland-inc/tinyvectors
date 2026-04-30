@@ -1,10 +1,16 @@
 import { mount, unmount } from 'svelte';
 import App from './App.svelte';
 import type { MotionVector } from '../src/motion/DeviceMotion.js';
+import type { TinyVectorsDeviceMotionStatus } from '../src/svelte/types.js';
 
 interface DevAppHandle {
 	requestDeviceMotionPermission: () => Promise<boolean>;
 	calibrateDeviceMotion: (samples?: number) => void;
+	getDeviceMotionStatus: () => TinyVectorsDeviceMotionStatus;
+}
+
+interface DevWindow extends Window {
+	__tinyvectorsDeviceMotionStatus?: () => TinyVectorsDeviceMotionStatus | null;
 }
 
 const params = new URLSearchParams(window.location.search);
@@ -29,6 +35,7 @@ function themeParam(): (typeof themes)[number] {
 
 const initialDarkMode = booleanParam('dark', true);
 const showControls = booleanParam('controls', true);
+const devWindow = window as DevWindow;
 document.body.classList.toggle('dark', initialDarkMode);
 document.body.classList.toggle('light', !initialDarkMode);
 document.body.classList.toggle('hide-controls', !showControls);
@@ -100,6 +107,7 @@ function mountApp() {
 		target,
 		props: currentProps,
 	}) as ReturnType<typeof mount> & DevAppHandle;
+	devWindow.__tinyvectorsDeviceMotionStatus = () => app?.getDeviceMotionStatus() ?? null;
 }
 
 

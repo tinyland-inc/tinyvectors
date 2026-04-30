@@ -19,6 +19,7 @@ await writeFile(
 	new URL('index.d.ts', outputDir),
 	[
 		"export { default as TinyVectors, type TinyVectorsExports, type TinyVectorsProps } from './TinyVectors.js';",
+		"export type { TinyVectorsDeviceMotionStatus } from './types.js';",
 		"export { default as BlobSVG, type BlobSVGProps } from './BlobSVG.js';",
 		'',
 	].join('\n'),

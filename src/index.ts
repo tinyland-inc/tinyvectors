@@ -102,3 +102,7 @@ export {
 	TinyVectors,
 	BlobSVG,
 } from './svelte/index.js';
+
+export type {
+	TinyVectorsDeviceMotionStatus,
+} from './svelte/index.js';

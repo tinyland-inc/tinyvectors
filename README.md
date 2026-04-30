@@ -70,6 +70,8 @@ hidden, TinyVectors resets device motion to neutral so stale tilt cannot keep st
 Tune that watchdog with `deviceMotionIdleResetMs` when a host app needs faster or slower sensor
 liveness handling. Pointer physics is enabled by default only when pointer, touch, or mouse input is
 detected, and resets to center when the pointer leaves the viewport or the window blurs.
+Use `getDeviceMotionStatus()` on the component handle to inspect support, permission, and listener
+state before deciding whether to show motion-permission UI.
 
 ## Entry Points
 
