@@ -159,9 +159,56 @@ export class BlobPhysics {
 			this.updateScreensaverPhysics(blob, deltaTime, time)
 		);
 
-		
+		// XSPH viscosity coupling — each blob's velocity drifts toward its
+		// neighborhood-weighted velocity. This is what makes the swarm
+		// behave as a fluid rather than 5 independent things; drag bleeds
+		// absolute motion, XSPH bleeds *relative* motion between neighbors.
+		// Macklin & Müller, Position Based Fluids, SIGGRAPH 2013.
+		this.applyXSPHCoupling();
+
+
 		this.mouseVelX *= 0.96;
 		this.mouseVelY *= 0.96;
+	}
+
+	private applyXSPHCoupling(): void {
+		const blobs = this.blobs;
+		const n = blobs.length;
+		if (n < 2) return;
+
+		if (!this.xsphDvX || this.xsphDvX.length < n) {
+			this.xsphDvX = new Float32Array(n);
+			this.xsphDvY = new Float32Array(n);
+		}
+		const dvX = this.xsphDvX;
+		const dvY = this.xsphDvY!;
+		dvX.fill(0);
+		dvY.fill(0);
+
+		const eps = 0.4;
+		const sigma = 80;
+		const twoSigmaSq = 2 * sigma * sigma;
+
+		for (let i = 0; i < n; i++) {
+			const a = blobs[i];
+			for (let j = i + 1; j < n; j++) {
+				const b = blobs[j];
+				const dx = b.currentX - a.currentX;
+				const dy = b.currentY - a.currentY;
+				const w = Math.exp(-(dx * dx + dy * dy) / twoSigmaSq);
+				const dvx = w * (b.velocityX - a.velocityX);
+				const dvy = w * (b.velocityY - a.velocityY);
+				dvX[i] += dvx;
+				dvY[i] += dvy;
+				dvX[j] -= dvx;
+				dvY[j] -= dvy;
+			}
+		}
+
+		for (let i = 0; i < n; i++) {
+			blobs[i].velocityX += eps * dvX[i];
+			blobs[i].velocityY += eps * dvY[i];
+		}
 	}
 
 	
