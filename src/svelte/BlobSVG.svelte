@@ -6,11 +6,10 @@
 	// Props using Svelte 5 $props() syntax
 	interface Props {
 		blobs?: ConvexBlob[];
-		containerElement?: HTMLElement | undefined;
 		physics?: BlobPhysics | null;
 	}
 
-	let { blobs = [], containerElement = undefined, physics = null }: Props = $props();
+	let { blobs = [], physics = null }: Props = $props();
 
 	// Track dark mode for blend mode switching
 	let isDarkMode = $state(false);

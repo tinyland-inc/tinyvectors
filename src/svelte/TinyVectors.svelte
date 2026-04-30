@@ -42,7 +42,6 @@
 	}: Props = $props();
 
 	// State - use regular variables for non-reactive state
-	let containerElement: HTMLDivElement | undefined = $state(undefined);
 	let blobs = $state<ReturnType<BlobPhysics['getBlobs']>>([]);
 	let isReady = $state(false);
 	let isMobileDevice = $state(false);
@@ -231,20 +230,12 @@
 
 {#if shouldLoad && themeColors.length > 0}
 	<div
-		bind:this={containerElement}
 		class="absolute inset-0 overflow-hidden pointer-events-none"
 		style:opacity
 		style:transition="opacity 0.8s ease-in-out"
 		aria-hidden="true"
 		role="presentation"
 	>
-		<BlobSVG {blobs} {containerElement} {physics} />
-
-		<!-- Mobile accelerometer status (debug) -->
-		{#if isMobileDevice && false}
-			<div class="pointer-events-none fixed top-2 right-2 text-xs opacity-30">
-				📱 {hasAccelerometerAccess ? '✅ Tilt Active' : '❌ Tilt Disabled'}
-			</div>
-		{/if}
+		<BlobSVG {blobs} {physics} />
 	</div>
 {/if}
