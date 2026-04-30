@@ -73,6 +73,11 @@ export class BlobPhysics {
 	private gaussianKernel: GaussianKernel;
 	private springSystem: SpringSystem;
 
+	// Pre-allocated scratch buffers for hot-path passes (no per-frame allocation).
+	private skinTensionScratch: Float32Array | null = null;
+	private xsphDvX: Float32Array | null = null;
+	private xsphDvY: Float32Array | null = null;
+
 	constructor(numBlobs: number, config: Partial<BlobPhysicsConfig> = {}) {
 		this.numBlobs = numBlobs;
 		this.config = { ...DEFAULT_CONFIG, ...config };
@@ -650,31 +655,33 @@ export class BlobPhysics {
 		});
 	}
 
+	// Laplacian skin-tension pass on the perimeter ring.
+	// r_i ← r_i + k · (0.5·(r_{i-1} + r_{i+1}) - r_i)  is the discrete
+	// surface-tension force on a closed control-point ring (Young-Laplace
+	// pressure). Two-pass: read all targets first, then write — otherwise
+	// we'd be smoothing against half-already-smoothed neighbors.
+	// Plus a viscous radial-velocity bleed (Kelvin-Voigt dashpot half) so
+	// energy dissipates with each correction rather than ringing as it
+	// did with the previous spring-only model.
 	private smoothControlPoints(blob: ConvexBlob): void {
-		if (!blob.controlPoints || blob.controlPoints.length < 3) return;
+		const cp = blob.controlPoints;
+		if (!cp || cp.length < 3) return;
+		const n = cp.length;
+		if (!this.skinTensionScratch || this.skinTensionScratch.length < n) {
+			this.skinTensionScratch = new Float32Array(n);
+		}
+		const target = this.skinTensionScratch;
+		const k = 0.15;
 
-		for (let i = 0; i < blob.controlPoints.length; i++) {
-			const current = blob.controlPoints[i];
-			const prev = blob.controlPoints[(i - 1 + blob.controlPoints.length) % blob.controlPoints.length];
-			const next = blob.controlPoints[(i + 1) % blob.controlPoints.length];
-
-			
-			const avgRadius = (prev.radius + current.radius + next.radius) / 3;
-			const smoothingFactor = 0.05;
-			current.radius = current.radius * (1 - smoothingFactor) + avgRadius * smoothingFactor;
-
-			
-			const minRadiusDiff = blob.size * 0.1;
-			if (Math.abs(current.radius - prev.radius) > minRadiusDiff) {
-				const adjustment = (Math.abs(current.radius - prev.radius) - minRadiusDiff) * 0.5;
-				if (current.radius > prev.radius) {
-					current.radius -= adjustment;
-					prev.radius += adjustment;
-				} else {
-					current.radius += adjustment;
-					prev.radius -= adjustment;
-				}
-			}
+		for (let i = 0; i < n; i++) {
+			const prev = cp[(i - 1 + n) % n].radius;
+			const next = cp[(i + 1) % n].radius;
+			target[i] = 0.5 * (prev + next);
+		}
+		for (let i = 0; i < n; i++) {
+			cp[i].radius += (target[i] - cp[i].radius) * k;
+			const v = blob.controlVelocities?.[i];
+			if (v) v.radialVelocity *= 1 - 0.5 * k;
 		}
 	}
 
