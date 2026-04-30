@@ -224,6 +224,7 @@ try {
 	const chrome = spawnChild(chromePath, [
 		'--headless=new',
 		'--disable-gpu',
+		'--disable-dev-shm-usage',
 		'--no-first-run',
 		'--no-default-browser-check',
 		`--remote-debugging-address=${host}`,

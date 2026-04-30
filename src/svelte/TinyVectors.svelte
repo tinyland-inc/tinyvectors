@@ -172,6 +172,7 @@
 		let disposed = false;
 
 		untrack(() => {
+			// BlobPhysics owns base defaults; this component forwards caller overrides.
 			const currentPhysics = new BlobPhysics(blobCount, physicsConfig);
 			physics = currentPhysics;
 

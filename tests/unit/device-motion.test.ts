@@ -91,6 +91,7 @@ function createMotionEnvironment(options: {
 			dispatchWindow('deviceorientation', { beta, gamma, alpha });
 		},
 		mql,
+		motionWindow,
 		removeDocumentListener,
 		removeWindowListener,
 	};
@@ -168,6 +169,20 @@ describe('DeviceMotion', () => {
 		expect(callback).toHaveBeenCalledWith({ x: 0, y: 1, z: 0 });
 	});
 
+	it('calls the permission API with DeviceOrientationEvent as receiver', async () => {
+		let receiver: unknown;
+		const requestPermission = vi.fn(function (this: unknown) {
+			receiver = this;
+			return Promise.resolve('granted' as const);
+		});
+		const env = createMotionEnvironment({ permission: requestPermission });
+		const motion = new DeviceMotion(vi.fn());
+
+		await expect(motion.requestPermission()).resolves.toBe(true);
+
+		expect(receiver).toBe(env.motionWindow.DeviceOrientationEvent);
+	});
+
 	it('does not restart listeners after cleanup resolves an in-flight permission request', async () => {
 		let resolvePermission: (value: PermissionResponse) => void = () => {};
 		const permission = new Promise<PermissionResponse>((resolve) => {
@@ -200,6 +215,31 @@ describe('DeviceMotion', () => {
 		now = 10;
 		env.dispatchOrientation(10, 20);
 		now = 20;
+		env.dispatchOrientation(20, 30);
+
+		expect(callback).toHaveBeenCalledOnce();
+		expect(callback).toHaveBeenCalledWith({
+			x: (30 - 20) / 45,
+			y: (20 - 10) / 45,
+			z: 0,
+		});
+	});
+
+	it('does not re-arm warmup after calibration completes', async () => {
+		const env = createMotionEnvironment();
+		const callback = vi.fn();
+		const motion = new DeviceMotion(callback, {
+			baselineAlpha: 0,
+			deadZone: 0,
+			warmupMs: 250,
+		});
+
+		await motion.initialize();
+		now = 300;
+		motion.calibrate(1);
+
+		env.dispatchOrientation(10, 20);
+		now = 301;
 		env.dispatchOrientation(20, 30);
 
 		expect(callback).toHaveBeenCalledOnce();

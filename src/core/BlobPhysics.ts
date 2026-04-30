@@ -33,7 +33,7 @@ export interface BlobPhysicsConfig {
 	springConfig: Partial<SpringConfig>;
 }
 
-const DEFAULT_CONFIG: BlobPhysicsConfig = {
+export const DEFAULT_BLOB_PHYSICS_CONFIG: BlobPhysicsConfig = {
 	antiClusteringStrength: 0.15,
 	bounceDamping: 0.7,
 	deformationSpeed: 0.5,
@@ -80,7 +80,7 @@ export class BlobPhysics {
 
 	constructor(numBlobs: number, config: Partial<BlobPhysicsConfig> = {}) {
 		this.numBlobs = numBlobs;
-		this.config = { ...DEFAULT_CONFIG, ...config };
+		this.config = { ...DEFAULT_BLOB_PHYSICS_CONFIG, ...config };
 
 		
 		this.spatialHash = new SpatialHash(60); 

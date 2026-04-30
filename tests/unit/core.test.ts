@@ -16,6 +16,11 @@ import {
 } from '../../src/core/PathGenerator.js';
 import { SpatialHash } from '../../src/core/SpatialHash.js';
 import { GaussianKernel } from '../../src/core/GaussianKernel.js';
+import {
+  BlobPhysics,
+  DEFAULT_BLOB_PHYSICS_CONFIG,
+  type BlobPhysicsConfig,
+} from '../../src/core/BlobPhysics.js';
 import type { RenderBlob } from '../../src/core/schema.js';
 import type { ConvexBlob, ControlPoint } from '../../src/core/types.js';
 
@@ -219,6 +224,39 @@ describe('PathGenerator', () => {
   });
 });
 
+
+
+
+
+describe('BlobPhysics', () => {
+  it('owns the TinyVectors default physics configuration', () => {
+    expect(DEFAULT_BLOB_PHYSICS_CONFIG).toEqual({
+      antiClusteringStrength: 0.15,
+      bounceDamping: 0.7,
+      deformationSpeed: 0.5,
+      territoryStrength: 0.1,
+      viscosity: 0.3,
+      useSpatialHash: true,
+      useGaussianSmoothing: true,
+      useSpringSystem: true,
+      springConfig: {},
+    });
+  });
+
+  it('merges caller overrides on top of internal defaults', () => {
+    const physics = new BlobPhysics(2, {
+      antiClusteringStrength: 0.25,
+      useSpatialHash: false,
+    });
+    const config = (physics as unknown as { config: BlobPhysicsConfig }).config;
+
+    expect(config).toEqual({
+      ...DEFAULT_BLOB_PHYSICS_CONFIG,
+      antiClusteringStrength: 0.25,
+      useSpatialHash: false,
+    });
+  });
+});
 
 
 

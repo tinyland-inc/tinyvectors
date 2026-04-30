@@ -35,6 +35,12 @@ npm publish --dry-run --ignore-scripts --access public ./bazel-bin/pkg
 
 `bazel query //...` should also work locally. `.bazelignore` excludes direnv, Nix, package-manager, and build-output directories so Bazel does not walk generated local artifacts.
 
+## Compatibility Notes
+
+Carry these notes into the v0.3 release notes:
+
+- Blob gradient stop opacity now uses the renderer-private `--tvi` custom property. Consumers overriding the previous `--tv-blob-intensity` property must migrate that override.
+
 ## CI Flow
 
 Pull requests and pushes to `main` run `Verify`, which calls `tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml` at a pinned commit. The reusable workflow:

@@ -181,7 +181,7 @@ export class DeviceMotion {
 
 	calibrate(samples = this.opts.calibrationSamples): void {
 		const sampleCount = Math.max(0, Math.floor(samples));
-		this.resetFilterState();
+		this.resetFilterState({ resetWarmup: false });
 
 		if (sampleCount === 0) {
 			if (this.lastScreen) {
@@ -352,14 +352,16 @@ export class DeviceMotion {
 		this.baseY = this.calibrationTotalY / sampleCount;
 		this.calibrationTotalX = 0;
 		this.calibrationTotalY = 0;
-		this.resetFilterState();
+		this.resetFilterState({ resetWarmup: false });
 		return false;
 	}
 
-	private resetFilterState(): void {
+	private resetFilterState({ resetWarmup = true } = {}): void {
 		this.filterX.reset();
 		this.filterY.reset();
-		this.listenerStartedAt = this.now();
+		if (resetWarmup) {
+			this.listenerStartedAt = this.now();
+		}
 		this.lastEventAt = 0;
 	}
 
