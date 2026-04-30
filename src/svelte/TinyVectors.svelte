@@ -92,23 +92,27 @@
 		return (isMobileUserAgent || (isMobileScreen && hasTouchScreen)) && hasOrientationAPI;
 	};
 
-	// Handle device motion - no reactive state updates
+	// DeviceMotion now emits already-filtered, axis-remapped, screen-aligned
+	// tilt vectors in [-1, 1] (One-Euro internally, slow baseline subtraction,
+	// face-down suppression, screen.orientation remap). Pass through directly
+	// — no extra EMA, no axis swap, no negation. The 0.8 magnitude scaler is
+	// preserved so gravity strength matches the previous code's feel at the
+	// physics layer.
+	//
+	// Y-gravity sign note: the previous handler computed gravityY = -beta,
+	// which made forward-tilt drive gravity UP the screen (away from the
+	// viewer). That was counter-intuitive — forward tilt should pull stuff
+	// toward the viewer (positive screen-Y, downward). TiltSource emits
+	// screen-aligned values directly, so we use motionData.y unchanged.
+	// This is the intentional fix that the canonical consumer was working
+	// around by setting enableDeviceMotion={false}.
 	const handleDeviceMotion = (motionData: { x: number; y: number; z: number }) => {
 		if (!hasAccelerometerAccess || !physics) return;
-
 		tiltX = motionData.x;
 		tiltY = motionData.y;
 		tiltZ = motionData.z;
-
-		// Convert to gravity vector
-		const newX = motionData.y * 0.8;
-		const newY = -motionData.x * 0.8;
-
-		// Smooth the values
-		gravityX = newX * 0.7 + gravityX * 0.3;
-		gravityY = newY * 0.7 + gravityY * 0.3;
-
-		// Pass to physics
+		gravityX = motionData.x * 0.8;
+		gravityY = motionData.y * 0.8;
 		physics.setGravity({ x: gravityX, y: gravityY });
 		physics.setTilt({ x: tiltX, y: tiltY, z: tiltZ });
 	};
