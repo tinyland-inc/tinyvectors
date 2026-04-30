@@ -40,6 +40,29 @@ Peer dependency:
 </div>
 ```
 
+Device motion must be requested from a user gesture on browsers that gate sensor APIs:
+
+```svelte
+<script lang="ts">
+	import { TinyVectors } from '@tummycrypt/tinyvectors';
+
+	interface TinyVectorsHandle {
+		requestDeviceMotionPermission: () => Promise<boolean>;
+		calibrateDeviceMotion: (samples?: number) => void;
+	}
+
+	let vectors: TinyVectorsHandle | undefined;
+</script>
+
+<TinyVectors bind:this={vectors} enableDeviceMotion={true} />
+<button type="button" onclick={() => vectors?.requestDeviceMotionPermission()}>
+	Enable motion
+</button>
+<button type="button" onclick={() => vectors?.calibrateDeviceMotion(10)}>
+	Calibrate
+</button>
+```
+
 ## Entry Points
 
 The package exports these public entry points:
@@ -67,8 +90,20 @@ Useful extra commands:
 - `pnpm dev` runs the local Vite demo app
 - `pnpm dev:watch` rebuilds the library on change
 - `pnpm test:pbt` runs the property-based invariants only
+- `pnpm test:browser:motion` launches a headless Chrome/CDP probe for synthetic orientation, CDP orientation, and CDP accelerometer input
 - `pnpm check:release-metadata` verifies `package.json`, `BUILD.bazel`, and `MODULE.bazel` stay aligned
 - `pnpm check:package` runs `publint`
+- `pnpm check:bundle-size` measures the tree-shaken `{ TinyVectors }` consumer bundle with Svelte externalized
+- `pnpm check:package-consumer` validates the Bazel-built package from `./bazel-bin/pkg` in a temporary consumer workspace
+
+The Bazel-to-npm release flow is documented in [docs/release-flow.md](./docs/release-flow.md).
+
+The dev app includes a browser/device harness for interaction work:
+
+- Use the panel toggles to isolate pointer, scroll, and device-motion physics.
+- Use `Spoof Tilt` and `Neutral Tilt` to verify TinyVectors motion wiring without relying on browser sensor tooling.
+- On a phone or tablet, open the dev URL, tap `Request Motion`, keep the device still, tap `Calibrate`, then tilt the device.
+- In desktop Chrome DevTools, use the Sensors panel to emulate orientation changes and watch the motion `x/y/z` status line. The browser probe also exercises Chrome's CDP accelerometer override path.
 
 ## Release Truth
 

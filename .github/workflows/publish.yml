@@ -25,8 +25,8 @@ jobs:
       typecheck_command: pnpm run check
       unit_test_command: pnpm run test
       build_command: pnpm run build
-      package_check_command: pnpm run check:package
-      bazel_targets: "//:pkg //:typecheck //:test"
+      package_check_command: "pnpm run check:package && pnpm run check:bundle-size"
+      bazel_targets: "//:pkg //:package_consumer_check //:bundle_size_check //:typecheck //:test"
       package_dir: ./bazel-bin/pkg
       npm_access: public
       dry_run: false
