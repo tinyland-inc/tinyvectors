@@ -73,6 +73,11 @@ export class BlobPhysics {
 	private gaussianKernel: GaussianKernel;
 	private springSystem: SpringSystem;
 
+	// Pre-allocated scratch buffers for hot-path passes (no per-frame allocation).
+	private skinTensionScratch: Float32Array | null = null;
+	private xsphDvX: Float32Array | null = null;
+	private xsphDvY: Float32Array | null = null;
+
 	constructor(numBlobs: number, config: Partial<BlobPhysicsConfig> = {}) {
 		this.numBlobs = numBlobs;
 		this.config = { ...DEFAULT_CONFIG, ...config };
@@ -154,16 +159,70 @@ export class BlobPhysics {
 			this.updateScreensaverPhysics(blob, deltaTime, time)
 		);
 
-		
+		// XSPH viscosity coupling — each blob's velocity drifts toward its
+		// neighborhood-weighted velocity. This is what makes the swarm
+		// behave as a fluid rather than 5 independent things; drag bleeds
+		// absolute motion, XSPH bleeds *relative* motion between neighbors.
+		// Macklin & Müller, Position Based Fluids, SIGGRAPH 2013.
+		this.applyXSPHCoupling();
+
+
 		this.mouseVelX *= 0.96;
 		this.mouseVelY *= 0.96;
+	}
+
+	private applyXSPHCoupling(): void {
+		const blobs = this.blobs;
+		const n = blobs.length;
+		if (n < 2) return;
+
+		if (!this.xsphDvX || !this.xsphDvY || this.xsphDvX.length < n) {
+			this.xsphDvX = new Float32Array(n);
+			this.xsphDvY = new Float32Array(n);
+		}
+		const dvX = this.xsphDvX;
+		const dvY = this.xsphDvY;
+		dvX.fill(0);
+		dvY.fill(0);
+
+		const eps = 0.4;
+		const sigma = 80;
+		const twoSigmaSq = 2 * sigma * sigma;
+
+		for (let i = 0; i < n; i++) {
+			const a = blobs[i];
+			for (let j = i + 1; j < n; j++) {
+				const b = blobs[j];
+				const dx = b.currentX - a.currentX;
+				const dy = b.currentY - a.currentY;
+				const w = Math.exp(-(dx * dx + dy * dy) / twoSigmaSq);
+				const dvx = w * (b.velocityX - a.velocityX);
+				const dvy = w * (b.velocityY - a.velocityY);
+				dvX[i] += dvx;
+				dvY[i] += dvy;
+				dvX[j] -= dvx;
+				dvY[j] -= dvy;
+			}
+		}
+
+		for (let i = 0; i < n; i++) {
+			blobs[i].velocityX += eps * dvX[i];
+			blobs[i].velocityY += eps * dvY[i];
+		}
 	}
 
 	
 
 
+	// Anti-clustering with Gaussian-falloff repulsion. The previous step-
+	// function variant ((distance < requiredDistance) ? force : 0, plus
+	// a separate sharp proximity multiplier at requiredDistance * 0.7)
+	// produced a discontinuous force read as a "click" on near-contact.
+	// exp(-r² / 2σ²) is C∞ smooth — force grows continuously, peaks at
+	// zero distance, decays smoothly. Reuses the same Gaussian family as
+	// the existing GaussianKernel.
 	private applyAntiClusteringWithSpatialHash(): void {
-		const maxPersonalSpace = 60; 
+		const maxPersonalSpace = 60;
 
 		for (const blob of this.blobs) {
 			const neighbors = this.spatialHash.queryNeighbors(blob, maxPersonalSpace);
@@ -172,30 +231,38 @@ export class BlobPhysics {
 				const dx = other.currentX - blob.currentX;
 				const dy = other.currentY - blob.currentY;
 				const distance = Math.sqrt(dx * dx + dy * dy);
+				if (distance <= 0) continue;
 
-				const requiredDistance = Math.max(blob.personalSpace || 50, other.personalSpace || 50);
+				const requiredDistance = Math.max(
+					blob.personalSpace || 50,
+					other.personalSpace || 50
+				);
+				const sigma = requiredDistance * 0.5;
+				const w = Math.exp(-(distance * distance) / (2 * sigma * sigma));
+				const repulsionForce =
+					w * 0.055 * (this.config.antiClusteringStrength / 0.15);
 
-				if (distance < requiredDistance && distance > 0) {
-					const overlap = requiredDistance - distance;
-					const repulsionForce = (overlap / requiredDistance) * 0.055 * this.config.antiClusteringStrength / 0.15;
+				const normalizedDx = dx / distance;
+				const normalizedDy = dy / distance;
+				const forceMultiplier = blob.repulsionStrength || 0.03;
 
-					const normalizedDx = dx / distance;
-					const normalizedDy = dy / distance;
+				blob.velocityX -= normalizedDx * repulsionForce * forceMultiplier;
+				blob.velocityY -= normalizedDy * repulsionForce * forceMultiplier;
 
-					const forceMultiplier = blob.repulsionStrength || 0.03;
-					const proximityMultiplier = distance < requiredDistance * 0.7 ? 3.5 : 1.0;
-
-					
-					blob.velocityX -= normalizedDx * repulsionForce * forceMultiplier * proximityMultiplier * 0.5;
-					blob.velocityY -= normalizedDy * repulsionForce * forceMultiplier * proximityMultiplier * 0.5;
-
+				// Force is now Gaussian (continuous, applies at any range
+				// inside the spatial-hash query). lastRepulsionTime stays
+				// gated on the close-contact threshold because downstream
+				// addEscapeVelocity uses it as a "blobs were just pushing
+				// each other apart" event detector — not as a generic
+				// "any neighbor contributed" flag. Decoupling is intentional.
+				if (distance < requiredDistance) {
 					blob.lastRepulsionTime = Date.now();
 				}
 			}
 		}
 	}
 
-	
+
 
 
 	updateMousePosition(x: number, y: number): void {
@@ -393,6 +460,9 @@ export class BlobPhysics {
 		}
 	}
 
+	// Fallback when useSpatialHash is false. Same Gaussian-falloff
+	// repulsion as applyAntiClusteringWithSpatialHash, applied
+	// pairwise in O(N²).
 	private applyEnhancedAntiClustering(): void {
 		for (let i = 0; i < this.blobs.length; i++) {
 			const blob1 = this.blobs[i];
@@ -403,28 +473,29 @@ export class BlobPhysics {
 				const dx = blob2.currentX - blob1.currentX;
 				const dy = blob2.currentY - blob1.currentY;
 				const distance = Math.sqrt(dx * dx + dy * dy);
+				if (distance <= 0) continue;
 
-				const requiredDistance = Math.max(blob1.personalSpace || 50, blob2.personalSpace || 50);
+				const requiredDistance = Math.max(
+					blob1.personalSpace || 50,
+					blob2.personalSpace || 50
+				);
+				const sigma = requiredDistance * 0.5;
+				const w = Math.exp(-(distance * distance) / (2 * sigma * sigma));
+				const repulsionForce =
+					w * 0.055 * (this.config.antiClusteringStrength / 0.15);
 
-				if (distance < requiredDistance && distance > 0) {
-					const overlap = requiredDistance - distance;
-					const repulsionForce = (overlap / requiredDistance) * 0.055 * this.config.antiClusteringStrength / 0.15;
+				const normalizedDx = dx / distance;
+				const normalizedDy = dy / distance;
+				const force1Multiplier = blob1.repulsionStrength || 0.03;
+				const force2Multiplier = blob2.repulsionStrength || 0.03;
 
-					const normalizedDx = dx / distance;
-					const normalizedDy = dy / distance;
+				blob1.velocityX -= normalizedDx * repulsionForce * force1Multiplier;
+				blob1.velocityY -= normalizedDy * repulsionForce * force1Multiplier;
 
-					const force1Multiplier = blob1.repulsionStrength || 0.03;
-					const force2Multiplier = blob2.repulsionStrength || 0.03;
+				blob2.velocityX += normalizedDx * repulsionForce * force2Multiplier;
+				blob2.velocityY += normalizedDy * repulsionForce * force2Multiplier;
 
-					
-					const proximityMultiplier = distance < requiredDistance * 0.7 ? 3.5 : 1.0;
-
-					blob1.velocityX -= normalizedDx * repulsionForce * force1Multiplier * proximityMultiplier;
-					blob1.velocityY -= normalizedDy * repulsionForce * force1Multiplier * proximityMultiplier;
-
-					blob2.velocityX += normalizedDx * repulsionForce * force2Multiplier * proximityMultiplier;
-					blob2.velocityY += normalizedDy * repulsionForce * force2Multiplier * proximityMultiplier;
-
+				if (distance < requiredDistance) {
 					blob1.lastRepulsionTime = Date.now();
 					blob2.lastRepulsionTime = Date.now();
 				}
@@ -656,31 +727,33 @@ export class BlobPhysics {
 		});
 	}
 
+	// Laplacian skin-tension pass on the perimeter ring.
+	// r_i ← r_i + k · (0.5·(r_{i-1} + r_{i+1}) - r_i)  is the discrete
+	// surface-tension force on a closed control-point ring (Young-Laplace
+	// pressure). Two-pass: read all targets first, then write — otherwise
+	// we'd be smoothing against half-already-smoothed neighbors.
+	// Plus a viscous radial-velocity bleed (Kelvin-Voigt dashpot half) so
+	// energy dissipates with each correction rather than ringing as it
+	// did with the previous spring-only model.
 	private smoothControlPoints(blob: ConvexBlob): void {
-		if (!blob.controlPoints || blob.controlPoints.length < 3) return;
+		const cp = blob.controlPoints;
+		if (!cp || cp.length < 3) return;
+		const n = cp.length;
+		if (!this.skinTensionScratch || this.skinTensionScratch.length < n) {
+			this.skinTensionScratch = new Float32Array(n);
+		}
+		const target = this.skinTensionScratch;
+		const k = 0.15;
 
-		for (let i = 0; i < blob.controlPoints.length; i++) {
-			const current = blob.controlPoints[i];
-			const prev = blob.controlPoints[(i - 1 + blob.controlPoints.length) % blob.controlPoints.length];
-			const next = blob.controlPoints[(i + 1) % blob.controlPoints.length];
-
-			
-			const avgRadius = (prev.radius + current.radius + next.radius) / 3;
-			const smoothingFactor = 0.05;
-			current.radius = current.radius * (1 - smoothingFactor) + avgRadius * smoothingFactor;
-
-			
-			const minRadiusDiff = blob.size * 0.1;
-			if (Math.abs(current.radius - prev.radius) > minRadiusDiff) {
-				const adjustment = (Math.abs(current.radius - prev.radius) - minRadiusDiff) * 0.5;
-				if (current.radius > prev.radius) {
-					current.radius -= adjustment;
-					prev.radius += adjustment;
-				} else {
-					current.radius += adjustment;
-					prev.radius -= adjustment;
-				}
-			}
+		for (let i = 0; i < n; i++) {
+			const prev = cp[(i - 1 + n) % n].radius;
+			const next = cp[(i + 1) % n].radius;
+			target[i] = 0.5 * (prev + next);
+		}
+		for (let i = 0; i < n; i++) {
+			cp[i].radius += (target[i] - cp[i].radius) * k;
+			const v = blob.controlVelocities?.[i];
+			if (v) v.radialVelocity *= 1 - 0.5 * k;
 		}
 	}
 
@@ -694,36 +767,55 @@ export class BlobPhysics {
 		}
 	}
 
+	// Soft-wall force: continuous penetration-based restoring force, no
+	// specular reflection or position snap. Edges deform along the wall
+	// (the blob "flattens") rather than bouncing — the gel cue.
 	private handleWallBouncing(blob: ConvexBlob): void {
 		const margin = blob.size * 0.8;
-		const damping = this.config.bounceDamping;
+		const yMargin = margin * 1.5;
+		const k = 0.08;
 		const currentTime = Date.now();
 
-		
-		if (blob.currentX < this.PHYSICS_MIN + margin) {
-			blob.currentX = this.PHYSICS_MIN + margin;
-			blob.velocityX = Math.abs(blob.velocityX) * damping;
+		const minX = this.PHYSICS_MIN + margin;
+		const maxX = this.PHYSICS_MAX - margin;
+		const minY = this.PHYSICS_MIN + yMargin;
+		const maxY = this.PHYSICS_MAX - yMargin;
+
+		const px =
+			Math.max(0, minX - blob.currentX) - Math.max(0, blob.currentX - maxX);
+		const py =
+			Math.max(0, minY - blob.currentY) - Math.max(0, blob.currentY - maxY);
+
+		if (px !== 0) blob.velocityX += k * px;
+		if (py !== 0) blob.velocityY += k * py;
+
+		// Hard outer clamp — far outside the soft band, snap back so the
+		// blob can never escape the canvas under extreme dt or large
+		// external forces. Records a bounce so existing time-since-bounce
+		// logic continues to work.
+		const hardMargin = blob.size * 0.2;
+		const hardMinX = this.PHYSICS_MIN + hardMargin;
+		const hardMaxX = this.PHYSICS_MAX - hardMargin;
+		const hardMinY = this.PHYSICS_MIN + hardMargin;
+		const hardMaxY = this.PHYSICS_MAX - hardMargin;
+		const hardDamping = this.config.bounceDamping;
+
+		if (blob.currentX < hardMinX) {
+			blob.currentX = hardMinX;
+			blob.velocityX = Math.abs(blob.velocityX) * hardDamping;
+			this.recordBounce(blob, currentTime);
+		} else if (blob.currentX > hardMaxX) {
+			blob.currentX = hardMaxX;
+			blob.velocityX = -Math.abs(blob.velocityX) * hardDamping;
 			this.recordBounce(blob, currentTime);
 		}
-
-		
-		if (blob.currentX > this.PHYSICS_MAX - margin) {
-			blob.currentX = this.PHYSICS_MAX - margin;
-			blob.velocityX = -Math.abs(blob.velocityX) * damping;
+		if (blob.currentY < hardMinY) {
+			blob.currentY = hardMinY;
+			blob.velocityY = Math.abs(blob.velocityY) * hardDamping;
 			this.recordBounce(blob, currentTime);
-		}
-
-		
-		if (blob.currentY < this.PHYSICS_MIN + margin * 1.5) {
-			blob.currentY = this.PHYSICS_MIN + margin * 1.5;
-			blob.velocityY = Math.abs(blob.velocityY) * damping;
-			this.recordBounce(blob, currentTime);
-		}
-
-		
-		if (blob.currentY > this.PHYSICS_MAX - margin * 1.5) {
-			blob.currentY = this.PHYSICS_MAX - margin * 1.5;
-			blob.velocityY = -Math.abs(blob.velocityY) * damping;
+		} else if (blob.currentY > hardMaxY) {
+			blob.currentY = hardMaxY;
+			blob.velocityY = -Math.abs(blob.velocityY) * hardDamping;
 			this.recordBounce(blob, currentTime);
 		}
 	}
