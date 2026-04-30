@@ -214,8 +214,15 @@ export class BlobPhysics {
 	
 
 
+	// Anti-clustering with Gaussian-falloff repulsion. The previous step-
+	// function variant ((distance < requiredDistance) ? force : 0, plus
+	// a separate sharp proximity multiplier at requiredDistance * 0.7)
+	// produced a discontinuous force read as a "click" on near-contact.
+	// exp(-r² / 2σ²) is C∞ smooth — force grows continuously, peaks at
+	// zero distance, decays smoothly. Reuses the same Gaussian family as
+	// the existing GaussianKernel.
 	private applyAntiClusteringWithSpatialHash(): void {
-		const maxPersonalSpace = 60; 
+		const maxPersonalSpace = 60;
 
 		for (const blob of this.blobs) {
 			const neighbors = this.spatialHash.queryNeighbors(blob, maxPersonalSpace);
@@ -224,23 +231,25 @@ export class BlobPhysics {
 				const dx = other.currentX - blob.currentX;
 				const dy = other.currentY - blob.currentY;
 				const distance = Math.sqrt(dx * dx + dy * dy);
+				if (distance <= 0) continue;
 
-				const requiredDistance = Math.max(blob.personalSpace || 50, other.personalSpace || 50);
+				const requiredDistance = Math.max(
+					blob.personalSpace || 50,
+					other.personalSpace || 50
+				);
+				const sigma = requiredDistance * 0.5;
+				const w = Math.exp(-(distance * distance) / (2 * sigma * sigma));
+				const repulsionForce =
+					w * 0.055 * (this.config.antiClusteringStrength / 0.15);
 
-				if (distance < requiredDistance && distance > 0) {
-					const overlap = requiredDistance - distance;
-					const repulsionForce = (overlap / requiredDistance) * 0.055 * this.config.antiClusteringStrength / 0.15;
+				const normalizedDx = dx / distance;
+				const normalizedDy = dy / distance;
+				const forceMultiplier = blob.repulsionStrength || 0.03;
 
-					const normalizedDx = dx / distance;
-					const normalizedDy = dy / distance;
+				blob.velocityX -= normalizedDx * repulsionForce * forceMultiplier;
+				blob.velocityY -= normalizedDy * repulsionForce * forceMultiplier;
 
-					const forceMultiplier = blob.repulsionStrength || 0.03;
-					const proximityMultiplier = distance < requiredDistance * 0.7 ? 3.5 : 1.0;
-
-					
-					blob.velocityX -= normalizedDx * repulsionForce * forceMultiplier * proximityMultiplier * 0.5;
-					blob.velocityY -= normalizedDy * repulsionForce * forceMultiplier * proximityMultiplier * 0.5;
-
+				if (distance < requiredDistance) {
 					blob.lastRepulsionTime = Date.now();
 				}
 			}
@@ -439,6 +448,9 @@ export class BlobPhysics {
 		}
 	}
 
+	// Fallback when useSpatialHash is false. Same Gaussian-falloff
+	// repulsion as applyAntiClusteringWithSpatialHash, applied
+	// pairwise in O(N²).
 	private applyEnhancedAntiClustering(): void {
 		for (let i = 0; i < this.blobs.length; i++) {
 			const blob1 = this.blobs[i];
@@ -449,28 +461,29 @@ export class BlobPhysics {
 				const dx = blob2.currentX - blob1.currentX;
 				const dy = blob2.currentY - blob1.currentY;
 				const distance = Math.sqrt(dx * dx + dy * dy);
+				if (distance <= 0) continue;
 
-				const requiredDistance = Math.max(blob1.personalSpace || 50, blob2.personalSpace || 50);
+				const requiredDistance = Math.max(
+					blob1.personalSpace || 50,
+					blob2.personalSpace || 50
+				);
+				const sigma = requiredDistance * 0.5;
+				const w = Math.exp(-(distance * distance) / (2 * sigma * sigma));
+				const repulsionForce =
+					w * 0.055 * (this.config.antiClusteringStrength / 0.15);
 
-				if (distance < requiredDistance && distance > 0) {
-					const overlap = requiredDistance - distance;
-					const repulsionForce = (overlap / requiredDistance) * 0.055 * this.config.antiClusteringStrength / 0.15;
+				const normalizedDx = dx / distance;
+				const normalizedDy = dy / distance;
+				const force1Multiplier = blob1.repulsionStrength || 0.03;
+				const force2Multiplier = blob2.repulsionStrength || 0.03;
 
-					const normalizedDx = dx / distance;
-					const normalizedDy = dy / distance;
+				blob1.velocityX -= normalizedDx * repulsionForce * force1Multiplier;
+				blob1.velocityY -= normalizedDy * repulsionForce * force1Multiplier;
 
-					const force1Multiplier = blob1.repulsionStrength || 0.03;
-					const force2Multiplier = blob2.repulsionStrength || 0.03;
+				blob2.velocityX += normalizedDx * repulsionForce * force2Multiplier;
+				blob2.velocityY += normalizedDy * repulsionForce * force2Multiplier;
 
-					
-					const proximityMultiplier = distance < requiredDistance * 0.7 ? 3.5 : 1.0;
-
-					blob1.velocityX -= normalizedDx * repulsionForce * force1Multiplier * proximityMultiplier;
-					blob1.velocityY -= normalizedDy * repulsionForce * force1Multiplier * proximityMultiplier;
-
-					blob2.velocityX += normalizedDx * repulsionForce * force2Multiplier * proximityMultiplier;
-					blob2.velocityY += normalizedDy * repulsionForce * force2Multiplier * proximityMultiplier;
-
+				if (distance < requiredDistance) {
 					blob1.lastRepulsionTime = Date.now();
 					blob2.lastRepulsionTime = Date.now();
 				}
