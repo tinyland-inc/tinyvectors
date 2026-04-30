@@ -183,8 +183,10 @@
 				isReady = true;
 
 				if (enableDeviceMotion && hasDeviceMotionCapability) {
-					deviceMotion = createDeviceMotion();
-					void deviceMotion.initialize();
+					if (!deviceMotion) {
+						deviceMotion = createDeviceMotion();
+						void deviceMotion.initialize();
+					}
 				}
 
 				if (enableScrollPhysics) {
