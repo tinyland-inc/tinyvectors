@@ -176,12 +176,12 @@ export class BlobPhysics {
 		const n = blobs.length;
 		if (n < 2) return;
 
-		if (!this.xsphDvX || this.xsphDvX.length < n) {
+		if (!this.xsphDvX || !this.xsphDvY || this.xsphDvX.length < n) {
 			this.xsphDvX = new Float32Array(n);
 			this.xsphDvY = new Float32Array(n);
 		}
 		const dvX = this.xsphDvX;
-		const dvY = this.xsphDvY!;
+		const dvY = this.xsphDvY;
 		dvX.fill(0);
 		dvY.fill(0);
 
@@ -786,23 +786,24 @@ export class BlobPhysics {
 		const hardMaxX = this.PHYSICS_MAX - hardMargin;
 		const hardMinY = this.PHYSICS_MIN + hardMargin;
 		const hardMaxY = this.PHYSICS_MAX - hardMargin;
+		const hardDamping = this.config.bounceDamping;
 
 		if (blob.currentX < hardMinX) {
 			blob.currentX = hardMinX;
-			blob.velocityX = Math.abs(blob.velocityX) * 0.5;
+			blob.velocityX = Math.abs(blob.velocityX) * hardDamping;
 			this.recordBounce(blob, currentTime);
 		} else if (blob.currentX > hardMaxX) {
 			blob.currentX = hardMaxX;
-			blob.velocityX = -Math.abs(blob.velocityX) * 0.5;
+			blob.velocityX = -Math.abs(blob.velocityX) * hardDamping;
 			this.recordBounce(blob, currentTime);
 		}
 		if (blob.currentY < hardMinY) {
 			blob.currentY = hardMinY;
-			blob.velocityY = Math.abs(blob.velocityY) * 0.5;
+			blob.velocityY = Math.abs(blob.velocityY) * hardDamping;
 			this.recordBounce(blob, currentTime);
 		} else if (blob.currentY > hardMaxY) {
 			blob.currentY = hardMaxY;
-			blob.velocityY = -Math.abs(blob.velocityY) * 0.5;
+			blob.velocityY = -Math.abs(blob.velocityY) * hardDamping;
 			this.recordBounce(blob, currentTime);
 		}
 	}
