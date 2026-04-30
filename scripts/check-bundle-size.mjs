@@ -9,22 +9,12 @@ import { build } from 'vite';
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const packageRoot = resolve(process.cwd(), process.argv[2] ?? '.');
 const distEntry = resolve(packageRoot, 'dist/index.js');
-const targetGzipKiB = Number(process.env.TINYVECTORS_TARGET_GZIP_KIB ?? 11);
-const maxGzipKiB = Number(process.env.TINYVECTORS_MAX_GZIP_KIB ?? 12);
+const targetGzipKiB = parsePositiveKiB('TINYVECTORS_TARGET_GZIP_KIB', 11);
+const maxGzipKiB = parsePositiveKiB('TINYVECTORS_MAX_GZIP_KIB', 12);
 
 if (!existsSync(distEntry)) {
 	console.error(`Bundle entry is missing: ${distEntry}`);
 	console.error('Run: pnpm run build');
-	process.exit(1);
-}
-
-if (!Number.isFinite(targetGzipKiB) || targetGzipKiB <= 0) {
-	console.error('TINYVECTORS_TARGET_GZIP_KIB must be a positive number');
-	process.exit(1);
-}
-
-if (!Number.isFinite(maxGzipKiB) || maxGzipKiB <= 0) {
-	console.error('TINYVECTORS_MAX_GZIP_KIB must be a positive number');
 	process.exit(1);
 }
 
@@ -93,4 +83,16 @@ console.log(TinyVectors);
 
 function relativeFromRepo(path) {
 	return path.startsWith(`${repoRoot}/`) ? path.slice(repoRoot.length + 1) : path;
+}
+
+function parsePositiveKiB(envName, defaultValue) {
+	const rawValue = process.env[envName];
+	const value = rawValue == null ? defaultValue : Number(rawValue.trim());
+
+	if (!Number.isFinite(value) || value <= 0) {
+		console.error(`${envName} must be a positive number`);
+		process.exit(1);
+	}
+
+	return value;
 }

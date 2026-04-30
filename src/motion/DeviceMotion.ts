@@ -179,6 +179,10 @@ export class DeviceMotion {
 		return true;
 	}
 
+	/**
+	 * Re-zero tilt from the next N orientation samples. Calibration samples are
+	 * consumed for the baseline only; normal output resumes on the following event.
+	 */
 	calibrate(samples = this.opts.calibrationSamples): void {
 		const sampleCount = Math.max(0, Math.floor(samples));
 		this.resetFilterState({ resetWarmup: false });
