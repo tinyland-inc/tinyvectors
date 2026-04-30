@@ -61,10 +61,7 @@ export default defineConfig({
 		target: 'es2022',
 
 		
-		// Don't minify — library consumers handle minification.
-		// esbuild minification uses `$` as a variable name which conflicts
-		// with Svelte's reserved `$` prefix in downstream builds.
-		minify: false,
+		minify: 'esbuild',
 	},
 
 	
