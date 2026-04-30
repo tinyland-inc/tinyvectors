@@ -1,17 +1,18 @@
 import { describe, it, expect } from 'vitest';
 import { BlobPhysics } from '../../src/core/BlobPhysics.js';
 
-describe('BlobPhysics.getBlobs stable references', () => {
-	it('returns the same array reference across calls (no per-frame allocation)', async () => {
+describe('BlobPhysics.getBlobs reference stability', () => {
+	it('returns a fresh array reference each call (so Svelte signals fire)', async () => {
 		const physics = new BlobPhysics(5, {});
 		await physics.init();
 		const colors = ['red', 'green', 'blue', 'yellow', 'purple'];
 		const a = physics.getBlobs(colors);
 		const b = physics.getBlobs(colors);
-		expect(a).toBe(b);
+		expect(a).not.toBe(b);
+		expect(a).toEqual(b);
 	});
 
-	it('returns the same blob references across calls (no per-frame spread)', async () => {
+	it('returns the same blob object references across calls (no per-frame spread)', async () => {
 		const physics = new BlobPhysics(3, {});
 		await physics.init();
 		const colors = ['red', 'green', 'blue'];
@@ -34,14 +35,15 @@ describe('BlobPhysics.getBlobs stable references', () => {
 		expect(blobs[4].color).toBe('red');
 	});
 
-	it('without themeColors returns the live blobs untouched', async () => {
+	it('without themeColors still returns a fresh array of the same blobs', async () => {
 		const physics = new BlobPhysics(2, {});
 		await physics.init();
 		const blobs1 = physics.getBlobs(['#aaa', '#bbb']);
 		expect(blobs1[0].color).toBe('#aaa');
 		// Calling without colors does not reset; previous theming remains.
 		const blobs2 = physics.getBlobs();
-		expect(blobs2).toBe(blobs1);
+		expect(blobs2).not.toBe(blobs1);
+		expect(blobs2[0]).toBe(blobs1[0]);
 		expect(blobs2[0].color).toBe('#aaa');
 	});
 });

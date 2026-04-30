@@ -210,17 +210,21 @@ export class BlobPhysics {
 	
 
 
-	// Returns the live blob array. When themeColors is supplied, the blob
-	// .color fields are mutated in place rather than producing a fresh
-	// array of spread objects each call. This eliminates 60 array + 300
-	// object allocations per second at 5 blobs × 60 fps.
+	// Mutate blob.color in place when themeColors is supplied — kills the
+	// 300 object spreads/sec the previous .map(blob => ({...blob, color}))
+	// performed at 5 blobs × 60 fps. Return a *shallow copy* so the array
+	// reference is fresh each call: TinyVectors.svelte assigns the result
+	// to a $state rune inside its rAF loop, and Svelte 5's signal compares
+	// by reference — returning the same array would freeze the animation
+	// after frame 1. Same blob object refs across calls; only the outer
+	// array shell is reallocated.
 	getBlobs(themeColors?: string[]): ConvexBlob[] {
 		if (themeColors && themeColors.length > 0) {
 			for (let i = 0; i < this.blobs.length; i++) {
 				this.blobs[i].color = themeColors[i % themeColors.length];
 			}
 		}
-		return this.blobs;
+		return this.blobs.slice();
 	}
 
 	
