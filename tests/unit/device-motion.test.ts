@@ -94,6 +94,11 @@ function createMotionEnvironment(options: {
 		motionWindow,
 		removeDocumentListener,
 		removeWindowListener,
+		dispatchReducedMotionChange() {
+			for (const listener of mqlListeners) {
+				listener();
+			}
+		},
 	};
 }
 
@@ -259,5 +264,35 @@ describe('DeviceMotion', () => {
 
 		expect(motion.getPermissionState()).toBe('denied');
 		expect(env.addWindowListener).not.toHaveBeenCalled();
+	});
+
+	it('restarts after reduced motion is disabled when no permission prompt is needed', async () => {
+		const env = createMotionEnvironment({ reducedMotion: true });
+		const motion = new DeviceMotion(vi.fn());
+
+		await expect(motion.initialize()).resolves.toBe(false);
+		env.mql.matches = false;
+		env.dispatchReducedMotionChange();
+
+		expect(motion.getPermissionState()).toBe('granted');
+		expect(motion.isActive()).toBe(true);
+		expect(env.addWindowListener).toHaveBeenCalledWith('deviceorientation', expect.any(Function), {
+			passive: true,
+		});
+	});
+
+	it('returns to prompt after reduced motion is disabled when permission is gated', async () => {
+		const requestPermission = vi.fn().mockResolvedValue('granted' as const);
+		const env = createMotionEnvironment({ permission: requestPermission, reducedMotion: true });
+		const motion = new DeviceMotion(vi.fn());
+
+		await expect(motion.initialize()).resolves.toBe(false);
+		env.mql.matches = false;
+		env.dispatchReducedMotionChange();
+
+		expect(motion.getPermissionState()).toBe('prompt');
+		expect(motion.isActive()).toBe(false);
+		expect(env.addWindowListener).not.toHaveBeenCalled();
+		expect(requestPermission).not.toHaveBeenCalled();
 	});
 });

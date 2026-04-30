@@ -115,6 +115,7 @@ export class DeviceMotion {
 	private boundVisibility: (() => void) | null = null;
 	private reducedMotionMql: MediaQueryList | null = null;
 	private reducedMotionListener: (() => void) | null = null;
+	private blockedByReducedMotion = false;
 
 	constructor(callback: DeviceMotionCallback, options: DeviceMotionOptions = {}) {
 		this.callback = callback;
@@ -133,6 +134,7 @@ export class DeviceMotion {
 		this.observeReducedMotion();
 
 		if (this.prefersReducedMotion()) {
+			this.blockedByReducedMotion = true;
 			this.permissionState = 'denied';
 			this.stopListening();
 			return false;
@@ -153,6 +155,7 @@ export class DeviceMotion {
 		this.observeReducedMotion();
 
 		if (this.prefersReducedMotion()) {
+			this.blockedByReducedMotion = true;
 			this.permissionState = 'denied';
 			this.stopListening();
 			return false;
@@ -219,6 +222,7 @@ export class DeviceMotion {
 		}
 		this.reducedMotionMql = null;
 		this.reducedMotionListener = null;
+		this.blockedByReducedMotion = false;
 		this.resetFilterState();
 	}
 
@@ -251,7 +255,19 @@ export class DeviceMotion {
 			if (this.disposed || !this.reducedMotionMql) return;
 
 			if (this.reducedMotionMql.matches) {
+				this.blockedByReducedMotion = true;
 				this.stopListening();
+				return;
+			}
+
+			if (this.blockedByReducedMotion) {
+				this.blockedByReducedMotion = false;
+				if (this.permissionState === 'granted' || !getPermissionApi()) {
+					this.permissionState = 'granted';
+					this.startListening();
+					return;
+				}
+				this.permissionState = 'prompt';
 				return;
 			}
 
