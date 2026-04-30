@@ -31,6 +31,8 @@ export interface DeviceMotionOptions {
 	faceDownThreshold?: number;
 	/** Reset filters if event gap exceeds this. Default 2000 ms. */
 	staleEventMs?: number;
+	/** Emit neutral output if events stop for this long. Default 2000 ms. */
+	idleResetMs?: number;
 	/** Degrees mapped to +/-1. Default 45, matching casual tilt range. */
 	range?: number;
 	/** Manual calibration sample count used by calibrate(). Default 8. */
@@ -53,6 +55,7 @@ const DEFAULTS = {
 	warmupMs: 250,
 	faceDownThreshold: 120,
 	staleEventMs: 2000,
+	idleResetMs: 2000,
 	range: 45,
 	calibrationSamples: 8,
 	deadZone: 0.015,
@@ -116,6 +119,7 @@ export class DeviceMotion {
 	private reducedMotionMql: MediaQueryList | null = null;
 	private reducedMotionListener: (() => void) | null = null;
 	private blockedByReducedMotion = false;
+	private idleResetTimer: ReturnType<typeof setTimeout> | null = null;
 
 	constructor(callback: DeviceMotionCallback, options: DeviceMotionOptions = {}) {
 		this.callback = callback;
@@ -289,17 +293,22 @@ export class DeviceMotion {
 		window.addEventListener('deviceorientation', this.boundOrientation, { passive: true });
 
 		this.boundVisibility = () => {
-			if (document.hidden) this.resetFilterState();
+			if (document.hidden) {
+				this.resetFilterState();
+				this.emitNeutral();
+			}
 		};
 		document.addEventListener('visibilitychange', this.boundVisibility);
 
 		this.listenerStartedAt = this.now();
 		this.lastEventAt = 0;
 		this.isListening = true;
+		this.armIdleReset();
 	}
 
 	private stopListening(): void {
 		if (!this.isListening) return;
+		this.clearIdleReset();
 
 		if (this.boundOrientation) {
 			window.removeEventListener('deviceorientation', this.boundOrientation);
@@ -324,12 +333,15 @@ export class DeviceMotion {
 			this.resetFilterState();
 			this.listenerStartedAt = now;
 			this.lastEventAt = now;
+			this.emitNeutral();
+			this.armIdleReset();
 			return;
 		}
 		this.lastEventAt = now;
 
 		if (Math.abs(event.beta) > this.opts.faceDownThreshold) {
-			this.callback({ x: 0, y: 0, z: 0 });
+			this.emitNeutral();
+			this.armIdleReset();
 			return;
 		}
 
@@ -340,7 +352,10 @@ export class DeviceMotion {
 		);
 		this.lastScreen = { x: screenX, y: screenY };
 
-		if (!this.consumeCalibrationSample(screenX, screenY)) return;
+		if (!this.consumeCalibrationSample(screenX, screenY)) {
+			this.armIdleReset();
+			return;
+		}
 
 		const alpha = this.opts.baselineAlpha;
 		this.baseX += alpha * (screenX - this.baseX);
@@ -356,6 +371,7 @@ export class DeviceMotion {
 			y: applyDeadZone(clamp(yFiltered), this.opts.deadZone),
 			z: 0,
 		});
+		this.armIdleReset();
 	}
 
 	private consumeCalibrationSample(screenX: number, screenY: number): boolean {
@@ -383,6 +399,31 @@ export class DeviceMotion {
 			this.listenerStartedAt = this.now();
 		}
 		this.lastEventAt = 0;
+	}
+
+	private emitNeutral(): void {
+		this.callback({ x: 0, y: 0, z: 0 });
+	}
+
+	private armIdleReset(): void {
+		this.clearIdleReset();
+		if (!this.isListening || this.opts.idleResetMs <= 0) return;
+
+		this.idleResetTimer = setTimeout(() => {
+			this.idleResetTimer = null;
+			if (this.disposed || !this.isListening) return;
+
+			this.resetFilterState({ resetWarmup: false });
+			this.emitNeutral();
+		}, this.opts.idleResetMs);
+
+		(this.idleResetTimer as { unref?: () => void }).unref?.();
+	}
+
+	private clearIdleReset(): void {
+		if (this.idleResetTimer === null) return;
+		clearTimeout(this.idleResetTimer);
+		this.idleResetTimer = null;
 	}
 
 	private now(): number {

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
 	createPointerPhysicsController,
+	detectPointerPhysicsCapability,
 	getLatestPointerEvent,
 	type PointerLikeEvent,
 	type PointerMoveEventName,
@@ -50,6 +51,30 @@ describe('getLatestPointerEvent', () => {
 		const event = { clientX: 10, clientY: 20, getCoalescedEvents: () => [] };
 
 		expect(getLatestPointerEvent(event)).toBe(event);
+	});
+});
+
+describe('detectPointerPhysicsCapability', () => {
+	it('accepts pointer events as direct pointer IO support', () => {
+		expect(detectPointerPhysicsCapability({ PointerEvent: function PointerEvent() {} })).toBe(
+			true,
+		);
+	});
+
+	it('accepts touch points and pointer media queries', () => {
+		expect(detectPointerPhysicsCapability({ navigator: { maxTouchPoints: 1 } })).toBe(true);
+		expect(
+			detectPointerPhysicsCapability({
+				matchMedia: (query) => ({ matches: query.includes('pointer') }),
+			}),
+		).toBe(true);
+	});
+
+	it('falls back to mouse IO and rejects environments without pointer input', () => {
+		expect(detectPointerPhysicsCapability({ MouseEvent: function MouseEvent() {} })).toBe(
+			true,
+		);
+		expect(detectPointerPhysicsCapability({})).toBe(false);
 	});
 });
 

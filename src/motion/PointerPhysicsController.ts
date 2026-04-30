@@ -32,6 +32,15 @@ export interface PointerPhysicsControllerOptions {
 	cancelFrame?: (handle: number) => void;
 }
 
+export interface PointerCapabilityEnvironment {
+	PointerEvent?: unknown;
+	MouseEvent?: unknown;
+	navigator?: {
+		maxTouchPoints?: number;
+	};
+	matchMedia?: (query: string) => { matches: boolean };
+}
+
 export interface PointerPhysicsController {
 	readonly eventName: PointerMoveEventName;
 	flush(): void;
@@ -42,6 +51,15 @@ export function getLatestPointerEvent(event: PointerLikeEvent): PointerLikeEvent
 	const coalesced =
 		typeof event.getCoalescedEvents === 'function' ? event.getCoalescedEvents() : [];
 	return coalesced.length > 0 ? coalesced[coalesced.length - 1] : event;
+}
+
+export function detectPointerPhysicsCapability(
+	environment: PointerCapabilityEnvironment = globalThis,
+): boolean {
+	if (typeof environment.PointerEvent !== 'undefined') return true;
+	if ((environment.navigator?.maxTouchPoints ?? 0) > 0) return true;
+	if (environment.matchMedia?.('(pointer: fine), (pointer: coarse)').matches) return true;
+	return typeof environment.MouseEvent !== 'undefined';
 }
 
 export function createPointerPhysicsController(

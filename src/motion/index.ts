@@ -17,7 +17,9 @@ export {
 } from './PointerMapper.js';
 export {
 	createPointerPhysicsController,
+	detectPointerPhysicsCapability,
 	getLatestPointerEvent,
+	type PointerCapabilityEnvironment,
 	type PointerLikeEvent,
 	type PointerMoveEventName,
 	type PointerPhysicsController,

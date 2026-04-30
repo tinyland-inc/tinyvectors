@@ -63,6 +63,14 @@ Device motion must be requested from a user gesture on browsers that gate sensor
 </button>
 ```
 
+TinyVectors auto-starts device-orientation motion on secure browsers that do not require a
+permission prompt. On permission-gated browsers, keep `enableDeviceMotion={true}` and call
+`requestDeviceMotionPermission()` from a user gesture. If sensor events pause or the document is
+hidden, TinyVectors resets device motion to neutral so stale tilt cannot keep steering the blobs.
+Tune that watchdog with `deviceMotionIdleResetMs` when a host app needs faster or slower sensor
+liveness handling. Pointer physics is enabled by default only when pointer, touch, or mouse input is
+detected.
+
 ## Entry Points
 
 The package exports these public entry points:

@@ -82,6 +82,7 @@ let currentProps = {
 	enableDeviceMotion: booleanParam('deviceMotion', true),
 	enableScrollPhysics: booleanParam('scrollPhysics', true),
 	enablePointerPhysics: booleanParam('pointerPhysics', true),
+	deviceMotionIdleResetMs: numberParam('motionIdleReset', 2000, 0, 10000),
 	onMotionSample(sample: MotionVector) {
 		updateMotionStatus(formatMotionSample(sample));
 	},

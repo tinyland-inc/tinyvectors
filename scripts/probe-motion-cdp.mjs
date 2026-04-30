@@ -313,7 +313,7 @@ try {
 		`,
 	});
 
-	const pageUrl = `http://${host}:${vitePort}/?controls=true&animated=true&deviceMotion=true&pointerPhysics=false&scrollPhysics=false&blobs=8`;
+	const pageUrl = `http://${host}:${vitePort}/?controls=true&animated=true&deviceMotion=true&pointerPhysics=false&scrollPhysics=false&blobs=8&motionIdleReset=700`;
 	await client.send('Page.navigate', { url: pageUrl });
 	await delay(1500);
 
@@ -336,7 +336,7 @@ try {
 		expression: `document.getElementById('spoof-tilt-btn')?.click()`,
 		awaitPromise: true,
 	});
-	await delay(1000);
+	await delay(350);
 
 	const afterSpoof = await evaluate(client, `({
 		status: document.getElementById('motion-status')?.textContent ?? null,
@@ -351,12 +351,23 @@ try {
 	assert(afterSpoof.events.length > initial.events.length, 'Synthetic orientation was not observed.');
 	assert(afterSpoof.firstPath !== initial.firstPath, 'Synthetic orientation did not change blob geometry.');
 
+	await delay(550);
+	const afterIdleReset = await evaluate(client, `({
+		status: document.getElementById('motion-status')?.textContent ?? null,
+		events: window.__tinyvectorsEvents
+	})`);
+
+	assert(
+		afterIdleReset.status === 'motion x 0.00 y 0.00 z 0.00',
+		`Device orientation idle reset did not neutralize motion; status was ${afterIdleReset.status}`,
+	);
+
 	await client.send('DeviceOrientation.setDeviceOrientationOverride', {
 		alpha: 180,
 		beta: 50,
 		gamma: -40,
 	});
-	await delay(1000);
+	await delay(350);
 
 	const afterCdpOrientation = await evaluate(client, `({
 		status: document.getElementById('motion-status')?.textContent ?? null,
@@ -488,6 +499,7 @@ try {
 					status: afterSpoof.status,
 					events: afterSpoof.events.length,
 					pathChanged: afterSpoof.firstPath !== initial.firstPath,
+					idleResetStatus: afterIdleReset.status,
 				},
 				cdpOrientation: {
 					status: afterCdpOrientation.status,

@@ -15,6 +15,7 @@
 		enableDeviceMotion?: boolean;
 		enableScrollPhysics?: boolean;
 		enablePointerPhysics?: boolean;
+		deviceMotionIdleResetMs?: number;
 		onMotionSample?: (sample: MotionVector) => void;
 	}
 
@@ -25,6 +26,7 @@
 		enableDeviceMotion = true,
 		enableScrollPhysics = true,
 		enablePointerPhysics = true,
+		deviceMotionIdleResetMs = 2000,
 		onMotionSample,
 	}: Props = $props();
 
@@ -51,6 +53,7 @@
 		{enableScrollPhysics}
 		{enablePointerPhysics}
 		deviceMotionCalibrationSamples={0}
+		{deviceMotionIdleResetMs}
 		onDeviceMotion={onMotionSample}
 	/>
 

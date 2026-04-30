@@ -8,6 +8,7 @@
 	} from '../motion/DeviceMotion.js';
 	import {
 		createPointerPhysicsController,
+		detectPointerPhysicsCapability,
 		type PointerPhysicsController,
 	} from '../motion/PointerPhysicsController.js';
 	import type { PointerBounds } from '../motion/PointerMapper.js';
@@ -41,6 +42,8 @@
 		deviceMotionStrength?: number;
 		/** Samples used by calibrateDeviceMotion() when no explicit count is supplied. */
 		deviceMotionCalibrationSamples?: number;
+		/** Milliseconds before paused device-orientation IO resets to neutral. */
+		deviceMotionIdleResetMs?: number;
 		/** Optional diagnostics hook for browser/dev harnesses. */
 		onDeviceMotion?: (motionData: MotionVector) => void;
 	}
@@ -58,6 +61,7 @@
 		enablePointerPhysics = true,
 		deviceMotionStrength = 0.8,
 		deviceMotionCalibrationSamples = 8,
+		deviceMotionIdleResetMs = 2000,
 		onDeviceMotion,
 	}: Props = $props();
 
@@ -86,6 +90,7 @@
 		new DeviceMotion(handleDeviceMotion, {
 			calibrationSamples: deviceMotionCalibrationSamples,
 			deadZone: 0.015,
+			idleResetMs: deviceMotionIdleResetMs,
 		});
 
 	const handleDeviceMotion = (motionData: MotionVector) => {
@@ -210,14 +215,17 @@
 			}
 
 			if (pointerPhysicsEnabled) {
-				pointerController = createPointerPhysicsController({
-					target: window,
-					getBounds: getPointerBounds,
-					supportsPointerEvents: 'PointerEvent' in window,
-					updatePosition(position) {
-						physics?.updateMousePosition(position.x, position.y);
-					},
-				});
+				const hasPointerCapability = detectPointerPhysicsCapability(window);
+				if (hasPointerCapability) {
+					pointerController = createPointerPhysicsController({
+						target: window,
+						getBounds: getPointerBounds,
+						supportsPointerEvents: 'PointerEvent' in window,
+						updatePosition(position) {
+							physics?.updateMousePosition(position.x, position.y);
+						},
+					});
+				}
 			}
 		});
 

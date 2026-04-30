@@ -28,6 +28,8 @@ export interface TinyVectorsProps {
 	deviceMotionStrength?: number;
 	/** Samples used by calibrateDeviceMotion() when no explicit count is supplied. */
 	deviceMotionCalibrationSamples?: number;
+	/** Milliseconds before paused device-orientation IO resets to neutral. */
+	deviceMotionIdleResetMs?: number;
 	/** Optional diagnostics hook for browser/dev harnesses. */
 	onDeviceMotion?: (motionData: MotionVector) => void;
 }

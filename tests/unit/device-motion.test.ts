@@ -54,6 +54,11 @@ function createMotionEnvironment(options: {
 		removeEventListener: removeWindowListener,
 		matchMedia: vi.fn(() => mql as unknown as MediaQueryList),
 	};
+	const motionDocument = {
+		hidden: false,
+		addEventListener: addDocumentListener,
+		removeEventListener: removeDocumentListener,
+	};
 
 	if (options.orientation ?? true) {
 		motionWindow.DeviceOrientationEvent = {};
@@ -63,11 +68,7 @@ function createMotionEnvironment(options: {
 	}
 
 	vi.stubGlobal('window', motionWindow);
-	vi.stubGlobal('document', {
-		hidden: false,
-		addEventListener: addDocumentListener,
-		removeEventListener: removeDocumentListener,
-	});
+	vi.stubGlobal('document', motionDocument);
 	vi.stubGlobal('screen', {
 		orientation: {
 			angle: options.angle ?? 0,
@@ -87,10 +88,20 @@ function createMotionEnvironment(options: {
 	return {
 		addDocumentListener,
 		addWindowListener,
+		dispatchDocument(type: string) {
+			for (const listener of documentListeners.get(type) ?? []) {
+				if (typeof listener === 'function') {
+					listener({ type } as Event);
+				} else {
+					listener.handleEvent({ type } as Event);
+				}
+			}
+		},
 		dispatchOrientation(beta: number, gamma: number, alpha: number | null = null) {
 			dispatchWindow('deviceorientation', { beta, gamma, alpha });
 		},
 		mql,
+		motionDocument,
 		motionWindow,
 		removeDocumentListener,
 		removeWindowListener,
@@ -108,6 +119,7 @@ beforeEach(() => {
 });
 
 afterEach(() => {
+	vi.useRealTimers();
 	vi.unstubAllGlobals();
 	vi.restoreAllMocks();
 });
@@ -253,6 +265,48 @@ describe('DeviceMotion', () => {
 			y: (20 - 10) / 45,
 			z: 0,
 		});
+	});
+
+	it('emits neutral motion when sensor events go idle', async () => {
+		vi.useFakeTimers();
+		const env = createMotionEnvironment();
+		const callback = vi.fn();
+		const motion = new DeviceMotion(callback, {
+			baselineAlpha: 0,
+			deadZone: 0,
+			idleResetMs: 100,
+			warmupMs: 0,
+		});
+
+		await motion.initialize();
+		now = 10;
+		env.dispatchOrientation(45, 0);
+		vi.advanceTimersByTime(99);
+
+		expect(callback).toHaveBeenCalledOnce();
+
+		vi.advanceTimersByTime(1);
+
+		expect(callback).toHaveBeenLastCalledWith({ x: 0, y: 0, z: 0 });
+		motion.cleanup();
+	});
+
+	it('neutralizes motion when the document is hidden', async () => {
+		const env = createMotionEnvironment();
+		const callback = vi.fn();
+		const motion = new DeviceMotion(callback, {
+			baselineAlpha: 0,
+			deadZone: 0,
+			warmupMs: 0,
+		});
+
+		await motion.initialize();
+		now = 10;
+		env.dispatchOrientation(45, 0);
+		env.motionDocument.hidden = true;
+		env.dispatchDocument('visibilitychange');
+
+		expect(callback).toHaveBeenLastCalledWith({ x: 0, y: 0, z: 0 });
 	});
 
 	it('honors reduced motion as a hard disable', async () => {

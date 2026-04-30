@@ -65,6 +65,7 @@ export {
 	DeviceMotion,
 	mapClientPointToPhysics,
 	createPointerPhysicsController,
+	detectPointerPhysicsCapability,
 	getLatestPointerEvent,
 	ScrollHandler,
 } from './motion/index.js';
@@ -77,6 +78,7 @@ export type {
 	PhysicsPoint,
 	PhysicsRange,
 	PointerBounds,
+	PointerCapabilityEnvironment,
 	PointerLikeEvent,
 	PointerMoveEventName,
 	PointerPhysicsController,
