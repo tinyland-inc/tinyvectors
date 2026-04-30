@@ -62,7 +62,7 @@ export type {
 	BlendMode,
 	ThemeColor,
 	ThemePreset,
-} from './schema.js';
+} from './theme-presets.js';
 
 // — Render blob shapes —
 export type {
@@ -88,11 +88,15 @@ export type {
 
 // — Theme presets and config —
 export {
-	DEFAULT_CONFIG,
 	TRANS_THEME,
 	PRIDE_THEME,
 	TINYLAND_THEME,
 	HIGH_CONTRAST_THEME,
 	THEME_PRESETS,
+} from './theme-presets.js';
+export { THEME_PRESET_COLORS } from './theme-colors.js';
+
+export {
+	DEFAULT_CONFIG,
 	mergeConfig,
 } from './schema.js';

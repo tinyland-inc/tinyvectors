@@ -2,7 +2,7 @@
 
 
 
-import { THEME_PRESETS, type ThemePreset } from '../core/schema.js';
+import { THEME_PRESETS, type ThemePreset } from '../core/theme-presets.js';
 
 export {
 	THEME_PRESETS,
@@ -13,7 +13,7 @@ export {
 	type ThemePreset,
 	type ThemeColor,
 	type ThemePresetName,
-} from '../core/schema.js';
+} from '../core/theme-presets.js';
 
 
 
