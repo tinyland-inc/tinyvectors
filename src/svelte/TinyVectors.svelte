@@ -170,6 +170,9 @@
 		if (!browser || !shouldLoad) return;
 
 		let disposed = false;
+		const scrollPhysicsEnabled = enableScrollPhysics;
+		const pointerPhysicsEnabled = enablePointerPhysics;
+		let wheelListenerAttached = false;
 
 		untrack(() => {
 			// BlobPhysics owns base defaults; this component forwards caller overrides.
@@ -189,7 +192,7 @@
 					}
 				}
 
-				if (enableScrollPhysics) {
+				if (scrollPhysicsEnabled) {
 					scrollHandler = new ScrollHandler();
 				}
 
@@ -200,11 +203,12 @@
 				}
 			});
 
-			if (enableScrollPhysics) {
+			if (scrollPhysicsEnabled) {
 				window.addEventListener('wheel', handleScroll, { passive: true });
+				wheelListenerAttached = true;
 			}
 
-			if (enablePointerPhysics) {
+			if (pointerPhysicsEnabled) {
 				pointerController = createPointerPhysicsController({
 					target: window,
 					getBounds: getPointerBounds,
@@ -219,7 +223,7 @@
 		return () => {
 			disposed = true;
 			stopAnimation();
-			if (enableScrollPhysics && browser) {
+			if (wheelListenerAttached) {
 				window.removeEventListener('wheel', handleScroll);
 			}
 			pointerController?.dispose();
