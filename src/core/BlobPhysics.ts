@@ -249,21 +249,23 @@ export class BlobPhysics {
 		
 		const convexPoints = this.generateConvexHull(points);
 
-		
-		let path = `M ${convexPoints[0].x.toFixed(2)},${convexPoints[0].y.toFixed(2)}`;
+		// Numbers are interpolated directly: Number.prototype.toString() in
+		// V8 is faster than toFixed and SVG accepts any precision. Each
+		// .toFixed call allocated a fresh string ~18,000 times/sec at
+		// 5 blobs × 12 control points × 60 fps.
+		let path = `M ${convexPoints[0].x},${convexPoints[0].y}`;
 
 		for (let i = 0; i < convexPoints.length; i++) {
 			const current = convexPoints[i];
 			const next = convexPoints[(i + 1) % convexPoints.length];
 			const nextNext = convexPoints[(i + 2) % convexPoints.length];
 
-			
 			const cp1x = current.x + (next.x - current.x) * 0.15;
 			const cp1y = current.y + (next.y - current.y) * 0.15;
 			const cp2x = next.x - (nextNext.x - current.x) * 0.05;
 			const cp2y = next.y - (nextNext.y - current.y) * 0.05;
 
-			path += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${next.x.toFixed(2)},${next.y.toFixed(2)}`;
+			path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${next.x},${next.y}`;
 		}
 
 		path += ' Z';
