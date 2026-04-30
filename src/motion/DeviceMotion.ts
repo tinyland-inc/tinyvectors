@@ -80,6 +80,7 @@ export class DeviceMotion {
 	private callback: DeviceMotionCallback;
 	private opts: Required<DeviceMotionOptions>;
 	private isListening = false;
+	private disposed = false;
 	private filterX: OneEuro;
 	private filterY: OneEuro;
 	private baseX = 0;
@@ -104,6 +105,7 @@ export class DeviceMotion {
 	}
 
 	async initialize(): Promise<void> {
+		if (this.disposed) return;
 		if (typeof window === 'undefined') return;
 		if (!window.isSecureContext) {
 			console.warn('DeviceMotion APIs require a secure context (HTTPS)');
@@ -120,14 +122,16 @@ export class DeviceMotion {
 		this.reducedMotionMql =
 			window.matchMedia?.('(prefers-reduced-motion: reduce)') ?? null;
 		this.reducedMotionListener = () => {
-			if (!this.reducedMotionMql) return;
+			if (this.disposed || !this.reducedMotionMql) return;
 			if (this.reducedMotionMql.matches && this.isListening) {
 				this.stopListening();
 			} else if (!this.reducedMotionMql.matches && !this.isListening) {
 				// Re-engage if user disabled reduced-motion mid-session.
 				// requestPermission() handles the no-API case internally.
+				// Guard against post-cleanup resolution: iOS may have a
+				// permission prompt open when cleanup() fires.
 				void this.requestPermission().then((ok) => {
-					if (ok) this.startListening();
+					if (ok && !this.disposed) this.startListening();
 				});
 			}
 		};
@@ -136,7 +140,7 @@ export class DeviceMotion {
 		if (this.reducedMotionMql?.matches) return;
 
 		const ok = await this.requestPermission();
-		if (ok) this.startListening();
+		if (ok && !this.disposed) this.startListening();
 	}
 
 	async requestPermission(): Promise<boolean> {
@@ -237,6 +241,12 @@ export class DeviceMotion {
 	}
 
 	cleanup(): void {
+		// Set disposed first so any in-flight requestPermission() promise
+		// that resolves after cleanup() short-circuits before re-attaching
+		// a deviceorientation listener (iOS keeps the permission prompt
+		// open across tab navigation; the user can dismiss after the
+		// component has unmounted).
+		this.disposed = true;
 		this.stopListening();
 		if (this.reducedMotionMql && this.reducedMotionListener) {
 			this.reducedMotionMql.removeEventListener(
