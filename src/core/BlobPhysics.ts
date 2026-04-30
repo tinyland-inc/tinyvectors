@@ -77,6 +77,7 @@ export class BlobPhysics {
 	private skinTensionScratch: Float32Array | null = null;
 	private xsphDvX: Float32Array | null = null;
 	private xsphDvY: Float32Array | null = null;
+	private xsphWeight: Float32Array | null = null;
 
 	constructor(numBlobs: number, config: Partial<BlobPhysicsConfig> = {}) {
 		this.numBlobs = numBlobs;
@@ -176,16 +177,19 @@ export class BlobPhysics {
 		const n = blobs.length;
 		if (n < 2) return;
 
-		if (!this.xsphDvX || !this.xsphDvY || this.xsphDvX.length < n) {
+		if (!this.xsphDvX || !this.xsphDvY || !this.xsphWeight || this.xsphDvX.length < n) {
 			this.xsphDvX = new Float32Array(n);
 			this.xsphDvY = new Float32Array(n);
+			this.xsphWeight = new Float32Array(n);
 		}
 		const dvX = this.xsphDvX;
 		const dvY = this.xsphDvY;
+		const weights = this.xsphWeight;
 		dvX.fill(0);
 		dvY.fill(0);
+		weights.fill(0);
 
-		const eps = 0.4;
+		const eps = 0.12;
 		const sigma = 80;
 		const twoSigmaSq = 2 * sigma * sigma;
 
@@ -196,6 +200,8 @@ export class BlobPhysics {
 				const dx = b.currentX - a.currentX;
 				const dy = b.currentY - a.currentY;
 				const w = Math.exp(-(dx * dx + dy * dy) / twoSigmaSq);
+				weights[i] += w;
+				weights[j] += w;
 				const dvx = w * (b.velocityX - a.velocityX);
 				const dvy = w * (b.velocityY - a.velocityY);
 				dvX[i] += dvx;
@@ -206,8 +212,9 @@ export class BlobPhysics {
 		}
 
 		for (let i = 0; i < n; i++) {
-			blobs[i].velocityX += eps * dvX[i];
-			blobs[i].velocityY += eps * dvY[i];
+			const normalizer = Math.max(1, weights[i]);
+			blobs[i].velocityX += eps * (dvX[i] / normalizer);
+			blobs[i].velocityY += eps * (dvY[i] / normalizer);
 		}
 	}
 
@@ -249,12 +256,6 @@ export class BlobPhysics {
 				blob.velocityX -= normalizedDx * repulsionForce * forceMultiplier;
 				blob.velocityY -= normalizedDy * repulsionForce * forceMultiplier;
 
-				// Force is now Gaussian (continuous, applies at any range
-				// inside the spatial-hash query). lastRepulsionTime stays
-				// gated on the close-contact threshold because downstream
-				// addEscapeVelocity uses it as a "blobs were just pushing
-				// each other apart" event detector — not as a generic
-				// "any neighbor contributed" flag. Decoupling is intentional.
 				if (distance < requiredDistance) {
 					blob.lastRepulsionTime = Date.now();
 				}
@@ -519,9 +520,6 @@ export class BlobPhysics {
 		this.updateMovementWithAccelerometer(blob, time);
 
 		
-		this.addEscapeVelocity(blob);
-
-		
 		this.updateSafeOrganicDeformation(blob, time);
 
 		
@@ -542,34 +540,30 @@ export class BlobPhysics {
 	}
 
 	private applyAccelerometerForces(blob: ConvexBlob): void {
-		const accelerometerStrength = 0.0008;
-		const maxForce = 0.003;
+		const accelerometerStrength = 0.003;
+		const maxForce = 0.012;
 
 		const gravityX = Math.max(-maxForce, Math.min(maxForce, this.gravity.x * accelerometerStrength));
 		const gravityY = Math.max(-maxForce, Math.min(maxForce, this.gravity.y * accelerometerStrength));
 
 		blob.velocityX += gravityX;
 		blob.velocityY += gravityY;
-
-		
-		if (blob.controlPoints && (Math.abs(this.gravity.x) > 0.3 || Math.abs(this.gravity.y) > 0.3)) {
-			const deformationAmount = Math.min(0.08, (Math.abs(this.gravity.x) + Math.abs(this.gravity.y)) * 0.02);
-			blob.chaosLevel = Math.min((blob.chaosLevel || 0) + deformationAmount, 0.2);
-		}
 	}
 
 	private updateMovementWithAccelerometer(blob: ConvexBlob, time: number): void {
+		const gravityMagnitude = Math.min(1, Math.sqrt(this.gravity.x * this.gravity.x + this.gravity.y * this.gravity.y));
+		const ambientScale = 1 - gravityMagnitude * 0.75;
 		
-		const neutralDriftX = (Math.random() - 0.5) * 0.001;
-		const neutralDriftY = (Math.random() - 0.5) * 0.001;
+		const neutralDriftX = (Math.random() - 0.5) * 0.00045 * ambientScale;
+		const neutralDriftY = (Math.random() - 0.5) * 0.00045 * ambientScale;
 
 		blob.velocityX += neutralDriftX;
 		blob.velocityY += neutralDriftY;
 
 		
 		const brownianTime = time * 0.1 + blob.phase;
-		const brownianX = Math.sin(brownianTime + (blob.driftAngle || 0)) * 0.0005;
-		const brownianY = Math.cos(brownianTime * 1.3 + (blob.driftAngle || 0)) * 0.0005;
+		const brownianX = Math.sin(brownianTime + (blob.driftAngle || 0)) * 0.00025 * ambientScale;
+		const brownianY = Math.cos(brownianTime * 1.3 + (blob.driftAngle || 0)) * 0.00025 * ambientScale;
 
 		blob.velocityX += brownianX;
 		blob.velocityY += brownianY;
@@ -599,8 +593,10 @@ export class BlobPhysics {
 		}
 
 		
-		blob.velocityX += (Math.random() - 0.5) * 0.003;
-		blob.velocityY += (Math.random() - 0.5) * 0.003;
+		const gravityMagnitude = Math.min(1, Math.sqrt(this.gravity.x * this.gravity.x + this.gravity.y * this.gravity.y));
+		const ambientScale = 1 - gravityMagnitude * 0.75;
+		blob.velocityX += (Math.random() - 0.5) * 0.0012 * ambientScale;
+		blob.velocityY += (Math.random() - 0.5) * 0.0012 * ambientScale;
 
 		
 		if (time % 45 < 0.1) {
@@ -613,16 +609,6 @@ export class BlobPhysics {
 				this.PHYSICS_MIN + 35,
 				Math.min(this.PHYSICS_MAX - 35, territoryY + (Math.random() - 0.5) * randomOffset)
 			);
-		}
-	}
-
-	private addEscapeVelocity(blob: ConvexBlob): void {
-		if (blob.lastRepulsionTime && Date.now() - blob.lastRepulsionTime < 3000) {
-			const escapeStrength = 0.01;
-			const escapeAngle = Math.random() * Math.PI * 2;
-
-			blob.velocityX += Math.cos(escapeAngle) * escapeStrength;
-			blob.velocityY += Math.sin(escapeAngle) * escapeStrength;
 		}
 	}
 
@@ -823,10 +809,6 @@ export class BlobPhysics {
 	private recordBounce(blob: ConvexBlob, currentTime: number): void {
 		blob.wallBounceCount = (blob.wallBounceCount || 0) + 1;
 		blob.lastBounceTime = currentTime;
-
-		
-		blob.velocityX += (Math.random() - 0.5) * 0.05;
-		blob.velocityY += (Math.random() - 0.5) * 0.05;
 
 		
 		blob.driftAngle = Math.random() * Math.PI * 2;

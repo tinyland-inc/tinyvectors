@@ -133,8 +133,8 @@
 				fy="20%"
 				style:--tvi={blob.intensity}
 			>
-				<stop offset="0%" stop-color="#ffffff" stop-opacity="calc(var(--tvi) * 0.54)" />
-				<stop offset="36%" stop-color="#ffffff" stop-opacity="calc(var(--tvi) * 0.2)" />
+				<stop offset="0%" stop-color="#ffffff" stop-opacity="calc(var(--tvi) * 0.28)" />
+				<stop offset="36%" stop-color="#ffffff" stop-opacity="calc(var(--tvi) * 0.1)" />
 				<stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
 			</radialGradient>
 
@@ -173,7 +173,7 @@
 		{/each}
 	</g>
 
-	<g style:mix-blend-mode={isDarkMode ? 'screen' : 'soft-light'} opacity={isDarkMode ? 0.34 : 0.24}>
+	<g style:mix-blend-mode={isDarkMode ? 'screen' : 'soft-light'} opacity={isDarkMode ? 0.18 : 0.14}>
 		{#each blobs as blob (blob.gradientId)}
 			<path
 				d={getCirclePath(
