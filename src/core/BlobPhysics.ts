@@ -249,6 +249,12 @@ export class BlobPhysics {
 				blob.velocityX -= normalizedDx * repulsionForce * forceMultiplier;
 				blob.velocityY -= normalizedDy * repulsionForce * forceMultiplier;
 
+				// Force is now Gaussian (continuous, applies at any range
+				// inside the spatial-hash query). lastRepulsionTime stays
+				// gated on the close-contact threshold because downstream
+				// addEscapeVelocity uses it as a "blobs were just pushing
+				// each other apart" event detector — not as a generic
+				// "any neighbor contributed" flag. Decoupling is intentional.
 				if (distance < requiredDistance) {
 					blob.lastRepulsionTime = Date.now();
 				}
@@ -256,7 +262,7 @@ export class BlobPhysics {
 		}
 	}
 
-	
+
 
 
 	updateMousePosition(x: number, y: number): void {
