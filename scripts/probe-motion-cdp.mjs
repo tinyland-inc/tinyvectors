@@ -249,7 +249,48 @@ try {
 	await client.send('Page.addScriptToEvaluateOnNewDocument', {
 		source: `
 			window.__tinyvectorsEvents = [];
-			window.addEventListener('deviceorientation', (event) => {
+			(() => {
+				const originalAddEventListener = EventTarget.prototype.addEventListener;
+				const originalRemoveEventListener = EventTarget.prototype.removeEventListener;
+				const listenerIds = new WeakMap();
+				const activeWindowListeners = new Map();
+				let nextListenerId = 1;
+
+				const listenerId = (listener) => {
+					if ((typeof listener !== 'function' && typeof listener !== 'object') || listener === null) {
+						return String(listener);
+					}
+					if (!listenerIds.has(listener)) {
+						listenerIds.set(listener, nextListenerId++);
+					}
+					return listenerIds.get(listener);
+				};
+
+				window.__tinyvectorsListenerLedger = {
+					snapshot() {
+						const counts = {};
+						for (const type of activeWindowListeners.values()) {
+							counts[type] = (counts[type] || 0) + 1;
+						}
+						return counts;
+					},
+				};
+
+				EventTarget.prototype.addEventListener = function(type, listener, options) {
+					if (this === window && listener) {
+						activeWindowListeners.set(type + ':' + listenerId(listener), type);
+					}
+					return originalAddEventListener.call(this, type, listener, options);
+				};
+
+				EventTarget.prototype.removeEventListener = function(type, listener, options) {
+					if (this === window && listener) {
+						activeWindowListeners.delete(type + ':' + listenerId(listener));
+					}
+					return originalRemoveEventListener.call(this, type, listener, options);
+				};
+
+				originalAddEventListener.call(window, 'deviceorientation', (event) => {
 				window.__tinyvectorsEvents.push({
 					type: 'deviceorientation',
 					alpha: event.alpha,
@@ -257,8 +298,8 @@ try {
 					gamma: event.gamma,
 					at: performance.now()
 				});
-			});
-			window.addEventListener('devicemotion', (event) => {
+				});
+				originalAddEventListener.call(window, 'devicemotion', (event) => {
 				const gravity = event.accelerationIncludingGravity;
 				window.__tinyvectorsEvents.push({
 					type: 'devicemotion',
@@ -267,7 +308,8 @@ try {
 					z: gravity && gravity.z,
 					at: performance.now()
 				});
-			});
+				});
+			})();
 		`,
 	});
 
@@ -329,6 +371,69 @@ try {
 	assert(
 		afterCdpOrientation.firstPath !== afterSpoof.firstPath,
 		'CDP device orientation override did not change blob geometry.',
+	);
+
+	const listenerProbeUrl = `http://${host}:${vitePort}/?controls=true&animated=true&deviceMotion=true&pointerPhysics=true&scrollPhysics=true&blobs=8&listenerProbe=1`;
+	await client.send('Page.navigate', { url: listenerProbeUrl });
+	await delay(1500);
+
+	const listenerInitial = await evaluate(client, `({
+		pathCount: document.querySelectorAll('path').length,
+		bodyPathCount: document.querySelectorAll('svg g')[1]?.querySelectorAll('path').length ?? 0,
+		gradientCount: document.querySelectorAll('radialGradient').length,
+		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
+	})`);
+
+	assert(listenerInitial.pathCount === 32, `Expected 32 SVG paths, got ${listenerInitial.pathCount}.`);
+	assert(listenerInitial.bodyPathCount === 8, `Expected 8 body paths, got ${listenerInitial.bodyPathCount}.`);
+	assert(
+		listenerInitial.gradientCount === 32,
+		`Expected 32 radial gradients, got ${listenerInitial.gradientCount}.`,
+	);
+	assert(
+		listenerInitial.listeners.wheel === 1,
+		`Expected one wheel listener, got ${listenerInitial.listeners.wheel}.`,
+	);
+	assert(
+		listenerInitial.listeners.pointermove === 1,
+		`Expected one pointermove listener, got ${listenerInitial.listeners.pointermove}.`,
+	);
+	assert(
+		listenerInitial.listeners.deviceorientation === 1,
+		`Expected one deviceorientation listener, got ${listenerInitial.listeners.deviceorientation}.`,
+	);
+
+	await client.send('Runtime.evaluate', {
+		expression: `document.getElementById('scroll-physics')?.click()`,
+		awaitPromise: true,
+	});
+	await delay(300);
+	const afterScrollOff = await evaluate(client, `({
+		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
+	})`);
+	assert(!afterScrollOff.listeners.wheel, 'Wheel listener leaked after disabling scroll physics.');
+
+	await client.send('Runtime.evaluate', {
+		expression: `document.getElementById('pointer-physics')?.click()`,
+		awaitPromise: true,
+	});
+	await delay(300);
+	const afterPointerOff = await evaluate(client, `({
+		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
+	})`);
+	assert(!afterPointerOff.listeners.pointermove, 'Pointer listener leaked after disabling pointer physics.');
+
+	await client.send('Runtime.evaluate', {
+		expression: `document.getElementById('device-motion')?.click()`,
+		awaitPromise: true,
+	});
+	await delay(300);
+	const afterDeviceMotionOff = await evaluate(client, `({
+		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
+	})`);
+	assert(
+		!afterDeviceMotionOff.listeners.deviceorientation,
+		'Device orientation listener leaked after disabling device motion.',
 	);
 
 	await client.send('Emulation.setSensorOverrideEnabled', {
@@ -396,6 +501,12 @@ try {
 					windowEvents: afterCdpAccelerometer.events.length,
 					pathChanged: cdpAccelerometerChanged,
 					note: 'TinyVectors uses DeviceOrientationEvent/TiltSource; raw accelerometer CDP is informational.',
+				},
+				listenerLifecycle: {
+					initial: listenerInitial.listeners,
+					afterScrollOff: afterScrollOff.listeners,
+					afterPointerOff: afterPointerOff.listeners,
+					afterDeviceMotionOff: afterDeviceMotionOff.listeners,
 				},
 			},
 			null,
