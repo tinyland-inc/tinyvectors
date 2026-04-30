@@ -410,6 +410,14 @@ try {
 		`Expected one pointermove listener, got ${listenerInitial.listeners.pointermove}.`,
 	);
 	assert(
+		listenerInitial.listeners.pointerout === 1,
+		`Expected one pointerout listener, got ${listenerInitial.listeners.pointerout}.`,
+	);
+	assert(
+		listenerInitial.listeners.blur === 1,
+		`Expected one blur listener, got ${listenerInitial.listeners.blur}.`,
+	);
+	assert(
 		listenerInitial.listeners.deviceorientation === 1,
 		`Expected one deviceorientation listener, got ${listenerInitial.listeners.deviceorientation}.`,
 	);
@@ -433,6 +441,8 @@ try {
 		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
 	})`);
 	assert(!afterPointerOff.listeners.pointermove, 'Pointer listener leaked after disabling pointer physics.');
+	assert(!afterPointerOff.listeners.pointerout, 'Pointer exit listener leaked after disabling pointer physics.');
+	assert(!afterPointerOff.listeners.blur, 'Pointer blur listener leaked after disabling pointer physics.');
 
 	await client.send('Runtime.evaluate', {
 		expression: `document.getElementById('device-motion')?.click()`,

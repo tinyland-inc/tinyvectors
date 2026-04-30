@@ -6,20 +6,26 @@ import {
 } from './PointerMapper.js';
 
 export type PointerMoveEventName = 'pointermove' | 'mousemove';
+export type PointerExitEventName = 'pointerout' | 'mouseout';
+export type PointerLifecycleEventName = PointerMoveEventName | PointerExitEventName | 'blur';
 
 export interface PointerPhysicsEventTarget {
 	addEventListener(
-		type: PointerMoveEventName,
+		type: PointerLifecycleEventName,
 		listener: EventListener,
 		options?: AddEventListenerOptions,
 	): void;
-	removeEventListener(type: PointerMoveEventName, listener: EventListener): void;
+	removeEventListener(type: PointerLifecycleEventName, listener: EventListener): void;
 }
 
 export interface PointerLikeEvent {
 	clientX: number;
 	clientY: number;
 	getCoalescedEvents?: () => PointerLikeEvent[];
+}
+
+export interface PointerExitLikeEvent {
+	relatedTarget?: EventTarget | null;
 }
 
 export interface PointerPhysicsControllerOptions {
@@ -43,6 +49,7 @@ export interface PointerCapabilityEnvironment {
 
 export interface PointerPhysicsController {
 	readonly eventName: PointerMoveEventName;
+	readonly exitEventName: PointerExitEventName;
 	flush(): void;
 	dispose(): void;
 }
@@ -62,6 +69,11 @@ export function detectPointerPhysicsCapability(
 	return typeof environment.MouseEvent !== 'undefined';
 }
 
+function getRangeCenter(range?: PhysicsRange): PhysicsPoint {
+	const center = range ? (range.min + range.max) / 2 : 50;
+	return { x: center, y: center };
+}
+
 export function createPointerPhysicsController(
 	options: PointerPhysicsControllerOptions,
 ): PointerPhysicsController {
@@ -70,6 +82,7 @@ export function createPointerPhysicsController(
 	const supportsPointerEvents =
 		options.supportsPointerEvents ?? typeof PointerEvent !== 'undefined';
 	const eventName: PointerMoveEventName = supportsPointerEvents ? 'pointermove' : 'mousemove';
+	const exitEventName: PointerExitEventName = supportsPointerEvents ? 'pointerout' : 'mouseout';
 
 	let frame: number | null = null;
 	let pendingPosition: PhysicsPoint | null = null;
@@ -81,6 +94,15 @@ export function createPointerPhysicsController(
 
 		options.updatePosition(pendingPosition);
 		pendingPosition = null;
+	};
+
+	const resetPosition = () => {
+		if (frame !== null) {
+			cancelFrame(frame);
+			frame = null;
+		}
+		pendingPosition = null;
+		options.updatePosition(getRangeCenter(options.range));
 	};
 
 	const handleMove: EventListener = (event) => {
@@ -99,15 +121,32 @@ export function createPointerPhysicsController(
 		}
 	};
 
+	const handleExit: EventListener = (event) => {
+		if (disposed) return;
+		const exitEvent = event as unknown as PointerExitLikeEvent;
+		if (exitEvent.relatedTarget) return;
+		resetPosition();
+	};
+
+	const handleBlur: EventListener = () => {
+		if (disposed) return;
+		resetPosition();
+	};
+
 	options.target.addEventListener(eventName, handleMove, { passive: true });
+	options.target.addEventListener(exitEventName, handleExit, { passive: true });
+	options.target.addEventListener('blur', handleBlur);
 
 	return {
 		eventName,
+		exitEventName,
 		flush,
 		dispose() {
 			if (disposed) return;
 			disposed = true;
 			options.target.removeEventListener(eventName, handleMove);
+			options.target.removeEventListener(exitEventName, handleExit);
+			options.target.removeEventListener('blur', handleBlur);
 			if (frame !== null) {
 				cancelFrame(frame);
 				frame = null;

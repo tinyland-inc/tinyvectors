@@ -4,18 +4,24 @@ import {
 	createPointerPhysicsController,
 	detectPointerPhysicsCapability,
 	getLatestPointerEvent,
+	type PointerLifecycleEventName,
 	type PointerLikeEvent,
-	type PointerMoveEventName,
 } from '../../src/motion/PointerPhysicsController.js';
 
+type PointerTestEvent = Partial<PointerLikeEvent> & { relatedTarget?: EventTarget | null };
+
 function createTarget() {
-	const listeners = new Map<PointerMoveEventName, EventListener>();
+	const listeners = new Map<PointerLifecycleEventName, EventListener>();
 	const addEventListener = vi.fn(
-		(type: PointerMoveEventName, listener: EventListener, _options?: AddEventListenerOptions) => {
+		(
+			type: PointerLifecycleEventName,
+			listener: EventListener,
+			_options?: AddEventListenerOptions,
+		) => {
 			listeners.set(type, listener);
 		},
 	);
-	const removeEventListener = vi.fn((type: PointerMoveEventName, listener: EventListener) => {
+	const removeEventListener = vi.fn((type: PointerLifecycleEventName, listener: EventListener) => {
 		if (listeners.get(type) === listener) {
 			listeners.delete(type);
 		}
@@ -23,7 +29,7 @@ function createTarget() {
 
 	return {
 		addEventListener,
-		dispatch(type: PointerMoveEventName, event: PointerLikeEvent) {
+		dispatch(type: PointerLifecycleEventName, event: PointerTestEvent = {}) {
 			listeners.get(type)?.(event as unknown as Event);
 		},
 		listeners,
@@ -98,11 +104,18 @@ describe('createPointerPhysicsController', () => {
 		});
 
 		expect(controller.eventName).toBe('pointermove');
+		expect(controller.exitEventName).toBe('pointerout');
 		expect(target.addEventListener).toHaveBeenCalledWith(
 			'pointermove',
 			expect.any(Function),
 			{ passive: true },
 		);
+		expect(target.addEventListener).toHaveBeenCalledWith(
+			'pointerout',
+			expect.any(Function),
+			{ passive: true },
+		);
+		expect(target.addEventListener).toHaveBeenCalledWith('blur', expect.any(Function));
 
 		controller.dispose();
 	});
@@ -119,8 +132,14 @@ describe('createPointerPhysicsController', () => {
 		});
 
 		expect(controller.eventName).toBe('mousemove');
+		expect(controller.exitEventName).toBe('mouseout');
 		expect(target.addEventListener).toHaveBeenCalledWith(
 			'mousemove',
+			expect.any(Function),
+			{ passive: true },
+		);
+		expect(target.addEventListener).toHaveBeenCalledWith(
+			'mouseout',
 			expect.any(Function),
 			{ passive: true },
 		);
@@ -188,6 +207,66 @@ describe('createPointerPhysicsController', () => {
 		expect(updatePosition).toHaveBeenCalledWith({ x: 100, y: 100 });
 	});
 
+	it('resets stale pointer position when pointer IO leaves the viewport', () => {
+		const target = createTarget();
+		const cancelFrame = vi.fn();
+		const updatePosition = vi.fn();
+		const controller = createPointerPhysicsController({
+			target,
+			getBounds: () => bounds,
+			range: { min: -1, max: 1 },
+			supportsPointerEvents: true,
+			requestFrame: vi.fn(() => 42),
+			cancelFrame,
+			updatePosition,
+		});
+
+		target.dispatch('pointermove', { clientX: 110, clientY: 70 });
+		target.dispatch('pointerout', {
+			relatedTarget: null,
+		});
+
+		expect(cancelFrame).toHaveBeenCalledWith(42);
+		expect(updatePosition).toHaveBeenCalledWith({ x: 0, y: 0 });
+		expect(controller.exitEventName).toBe('pointerout');
+	});
+
+	it('ignores pointerout transitions that stay inside the document', () => {
+		const target = createTarget();
+		const updatePosition = vi.fn();
+		createPointerPhysicsController({
+			target,
+			getBounds: () => bounds,
+			supportsPointerEvents: true,
+			requestFrame: vi.fn(),
+			cancelFrame: vi.fn(),
+			updatePosition,
+		});
+
+		target.dispatch('pointerout', {
+			relatedTarget: {} as EventTarget,
+		});
+
+		expect(updatePosition).not.toHaveBeenCalled();
+	});
+
+	it('resets stale pointer position on window blur', () => {
+		const target = createTarget();
+		const updatePosition = vi.fn();
+		createPointerPhysicsController({
+			target,
+			getBounds: () => bounds,
+			supportsPointerEvents: false,
+			requestFrame: vi.fn(),
+			cancelFrame: vi.fn(),
+			updatePosition,
+		});
+
+		target.dispatch('blur');
+
+		expect(updatePosition).toHaveBeenCalledWith({ x: 50, y: 50 });
+	});
+
 	it('removes listeners and cancels pending work during cleanup', () => {
 		const target = createTarget();
 		const cancelFrame = vi.fn();
@@ -211,6 +290,8 @@ describe('createPointerPhysicsController', () => {
 
 		expect(cancelFrame).toHaveBeenCalledWith(42);
 		expect(target.removeEventListener).toHaveBeenCalledWith('pointermove', expect.any(Function));
+		expect(target.removeEventListener).toHaveBeenCalledWith('pointerout', expect.any(Function));
+		expect(target.removeEventListener).toHaveBeenCalledWith('blur', expect.any(Function));
 		expect(updatePosition).not.toHaveBeenCalled();
 	});
 });

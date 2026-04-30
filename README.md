@@ -69,7 +69,7 @@ permission prompt. On permission-gated browsers, keep `enableDeviceMotion={true}
 hidden, TinyVectors resets device motion to neutral so stale tilt cannot keep steering the blobs.
 Tune that watchdog with `deviceMotionIdleResetMs` when a host app needs faster or slower sensor
 liveness handling. Pointer physics is enabled by default only when pointer, touch, or mouse input is
-detected.
+detected, and resets to center when the pointer leaves the viewport or the window blurs.
 
 ## Entry Points
 
