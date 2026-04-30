@@ -23,6 +23,7 @@ export class ScrollHandler {
 	private scrollDirection = 0;
 	private pullForces: PullForce[] = [];
 	private peakVelocity = 0;
+	private rafId: number | null = null;
 
 	constructor(config?: ScrollHandlerConfig) {
 		if (config?.decayRate) this.decayRate = config.decayRate;
@@ -110,6 +111,13 @@ export class ScrollHandler {
 	}
 
 	private startDecay(): void {
+		// Cancel any in-flight decay so rapid handleScroll() calls don't
+		// queue overlapping RAF callbacks.
+		if (this.rafId !== null) {
+			cancelAnimationFrame(this.rafId);
+			this.rafId = null;
+		}
+
 		const decay = () => {
 			this.stickiness *= this.decayRate;
 			this.scrollVelocity *= this.decayRate;
@@ -126,13 +134,14 @@ export class ScrollHandler {
 				}));
 
 			if (this.stickiness > 0.01 || this.pullForces.length > 0) {
-				requestAnimationFrame(decay);
+				this.rafId = requestAnimationFrame(decay);
 			} else {
 				this.stickiness = 0;
 				this.scrollVelocity = 0;
+				this.rafId = null;
 			}
 		};
-		requestAnimationFrame(decay);
+		this.rafId = requestAnimationFrame(decay);
 	}
 
 	public getStickiness(): number {
