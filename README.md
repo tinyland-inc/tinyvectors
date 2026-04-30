@@ -97,6 +97,7 @@ Useful extra commands:
 - `pnpm check:package-consumer` validates the Bazel-built package from `./bazel-bin/pkg` in a temporary consumer workspace
 
 The Bazel-to-npm release flow is documented in [docs/release-flow.md](./docs/release-flow.md).
+The physics interaction direction is documented in [docs/physics-feel-contract.md](./docs/physics-feel-contract.md).
 
 The dev app includes a browser/device harness for interaction work:
 
