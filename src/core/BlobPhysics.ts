@@ -210,13 +210,15 @@ export class BlobPhysics {
 	
 
 
+	// Returns the live blob array. When themeColors is supplied, the blob
+	// .color fields are mutated in place rather than producing a fresh
+	// array of spread objects each call. This eliminates 60 array + 300
+	// object allocations per second at 5 blobs × 60 fps.
 	getBlobs(themeColors?: string[]): ConvexBlob[] {
 		if (themeColors && themeColors.length > 0) {
-			
-			return this.blobs.map((blob, i) => ({
-				...blob,
-				color: themeColors[i % themeColors.length],
-			}));
+			for (let i = 0; i < this.blobs.length; i++) {
+				this.blobs[i].color = themeColors[i % themeColors.length];
+			}
 		}
 		return this.blobs;
 	}
