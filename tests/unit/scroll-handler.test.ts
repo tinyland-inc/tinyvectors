@@ -1,70 +1,89 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+
 import { ScrollHandler } from '../../src/motion/ScrollHandler.js';
 
-describe('ScrollHandler RAF backpressure', () => {
-	let nextId = 1;
-	let scheduled: Map<number, FrameRequestCallback>;
-	let cancelled: Set<number>;
+describe('ScrollHandler', () => {
+	const frameCallbacks: FrameRequestCallback[] = [];
 
 	beforeEach(() => {
-		nextId = 1;
-		scheduled = new Map();
-		cancelled = new Set();
-		vi.stubGlobal('requestAnimationFrame', (cb: FrameRequestCallback) => {
-			const id = nextId++;
-			scheduled.set(id, cb);
-			return id;
-		});
-		vi.stubGlobal('cancelAnimationFrame', (id: number) => {
-			cancelled.add(id);
-			scheduled.delete(id);
-		});
+		frameCallbacks.length = 0;
+		vi.useFakeTimers();
+		vi.setSystemTime(1_000);
+		vi.stubGlobal(
+			'requestAnimationFrame',
+			vi.fn((callback: FrameRequestCallback) => {
+				frameCallbacks.push(callback);
+				return frameCallbacks.length;
+			}),
+		);
+		vi.stubGlobal('cancelAnimationFrame', vi.fn());
 	});
 
 	afterEach(() => {
+		vi.useRealTimers();
 		vi.unstubAllGlobals();
+		vi.restoreAllMocks();
 	});
 
-	it('cancels in-flight decay before respawning under rapid scroll', () => {
-		const h = new ScrollHandler();
-		const fakeWheel = (deltaY: number) =>
-			({ deltaY } as unknown as WheelEvent);
+	it('converts wheel movement into stickiness and pull forces', () => {
+		const handler = new ScrollHandler();
 
-		for (let i = 0; i < 50; i++) {
-			h.handleScroll(fakeWheel(100));
-		}
+		handler.handleScroll({ deltaY: 240 } as WheelEvent);
 
-		// Exactly one active RAF after 50 rapid handleScroll() calls.
-		expect(scheduled.size).toBe(1);
-		// And 49 prior RAFs were cancelled.
-		expect(cancelled.size).toBe(49);
+		expect(handler.isActivelyScrolling()).toBe(true);
+		expect(handler.getScrollDirection()).toBe(1);
+		expect(handler.getTotalScrollDistance()).toBe(240);
+		expect(handler.getStickiness()).toBeGreaterThan(0);
+		expect(handler.getPullForces().length).toBeGreaterThan(0);
 	});
 
-	it('clears rafId when decay completes', () => {
-		const h = new ScrollHandler();
-		const fakeWheel = (deltaY: number) =>
-			({ deltaY } as unknown as WheelEvent);
+	it('resets active scroll state after the quiet window', () => {
+		const handler = new ScrollHandler();
 
-		// One scroll event kicks off decay.
-		h.handleScroll(fakeWheel(50));
-		expect(scheduled.size).toBe(1);
+		handler.handleScroll({ deltaY: 120 } as WheelEvent);
+		vi.setSystemTime(1_201);
+		vi.advanceTimersByTime(200);
 
-		// Drain all scheduled callbacks until decay self-terminates.
-		// `decay` re-schedules itself only while stickiness > 0.01 or pullForces > 0.
-		// With decayRate 0.92, this exits within a few hundred frames.
-		let safety = 1000;
-		while (scheduled.size > 0 && safety-- > 0) {
-			const [[id, cb]] = scheduled.entries();
-			scheduled.delete(id);
-			cb(performance.now());
-		}
-		expect(scheduled.size).toBe(0);
+		expect(handler.isActivelyScrolling()).toBe(false);
+		expect(handler.getTotalScrollDistance()).toBe(0);
+		expect(handler.getPeakVelocity()).toBe(0);
+	});
 
-		// A subsequent scroll should kick off a fresh decay (no cancel needed
-		// because the previous loop exited cleanly).
-		const cancelledBefore = cancelled.size;
-		h.handleScroll(fakeWheel(50));
-		expect(cancelled.size).toBe(cancelledBefore);
-		expect(scheduled.size).toBe(1);
+	it('keeps a single decay loop active across repeated scroll events', () => {
+		const handler = new ScrollHandler();
+
+		handler.handleScroll({ deltaY: 120 } as WheelEvent);
+		handler.handleScroll({ deltaY: 140 } as WheelEvent);
+
+		expect(requestAnimationFrame).toHaveBeenCalledOnce();
+
+		frameCallbacks[0](16);
+
+		expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
+	});
+
+	it('cleans up scheduled decay and scroll-end work', () => {
+		const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
+		const handler = new ScrollHandler();
+
+		handler.handleScroll({ deltaY: 120 } as WheelEvent);
+		handler.dispose();
+		frameCallbacks[0](16);
+
+		expect(cancelAnimationFrame).toHaveBeenCalledWith(1);
+		expect(clearTimeoutSpy).toHaveBeenCalled();
+		expect(handler.getStickiness()).toBe(0);
+		expect(handler.isActivelyScrolling()).toBe(false);
+		expect(handler.getPullForces()).toEqual([]);
+	});
+
+	it('ignores scroll events after disposal', () => {
+		const handler = new ScrollHandler();
+
+		handler.dispose();
+		handler.handleScroll({ deltaY: 120 } as WheelEvent);
+
+		expect(handler.getStickiness()).toBe(0);
+		expect(requestAnimationFrame).not.toHaveBeenCalled();
 	});
 });
