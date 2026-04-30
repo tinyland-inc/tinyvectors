@@ -12,7 +12,7 @@ pnpm add @tummycrypt/tinyvectors
 
 Peer dependency:
 
-- `svelte@^5`
+- `svelte@>=5.20.0`
 
 ## Quick Start
 

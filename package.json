@@ -82,7 +82,7 @@
     "prepublishOnly": "pnpm run check:release-metadata && pnpm run build && pnpm run check:package && pnpm run check:bundle-size"
   },
   "peerDependencies": {
-    "svelte": "^5.0.0"
+    "svelte": ">=5.20.0"
   },
   "devDependencies": {
     "@sveltejs/package": "^2.5.7",
