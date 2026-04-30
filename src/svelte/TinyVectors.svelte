@@ -170,6 +170,7 @@
 		if (!browser || !shouldLoad) return;
 
 		let disposed = false;
+		const deviceMotionEnabled = enableDeviceMotion;
 		const scrollPhysicsEnabled = enableScrollPhysics;
 		const pointerPhysicsEnabled = enablePointerPhysics;
 		let wheelListenerAttached = false;
@@ -185,7 +186,7 @@
 				const hasDeviceMotionCapability = detectDeviceMotionCapability();
 				isReady = true;
 
-				if (enableDeviceMotion && hasDeviceMotionCapability) {
+				if (deviceMotionEnabled && hasDeviceMotionCapability) {
 					if (!deviceMotion) {
 						deviceMotion = createDeviceMotion();
 						void deviceMotion.initialize();
