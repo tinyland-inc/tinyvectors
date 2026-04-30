@@ -67,29 +67,35 @@
 			<feGaussianBlur in="SourceGraphic" stdDeviation="1.5" result="soft" />
 		</filter>
 
-		<!-- Gradients for each blob -->
+		<!--
+			Gradients for each blob. Each <radialGradient> sets
+			--tv-blob-intensity inline once; the contained <stop>s
+			compute their own opacity via calc(). Reduces per-frame
+			reactive evaluations from ~12 stop-opacity expressions
+			per blob to a single inline-style assignment.
+		-->
 		{#each blobs as blob, i (blob.gradientId)}
 			<!-- Glow gradient (outer) -->
-			<radialGradient id="{blob.gradientId}Glow" cx="50%" cy="50%" r="80%">
-				<stop offset="0%" stop-color={blob.color} stop-opacity={blob.intensity * 0.5} />
-				<stop offset="40%" stop-color={blob.color} stop-opacity={blob.intensity * 0.3} />
-				<stop offset="70%" stop-color={blob.color} stop-opacity={blob.intensity * 0.15} />
+			<radialGradient id="{blob.gradientId}Glow" cx="50%" cy="50%" r="80%" style="--tv-blob-intensity: {blob.intensity}">
+				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.5)" />
+				<stop offset="40%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.3)" />
+				<stop offset="70%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.15)" />
 				<stop offset="100%" stop-color={blob.color} stop-opacity="0" />
 			</radialGradient>
 
 			<!-- Main gradient -->
-			<radialGradient id="{blob.gradientId}Main" cx="50%" cy="50%" r="50%">
-				<stop offset="0%" stop-color={blob.color} stop-opacity={blob.intensity * 0.9} />
-				<stop offset="50%" stop-color={blob.color} stop-opacity={blob.intensity * 0.6} />
-				<stop offset="80%" stop-color={blob.color} stop-opacity={blob.intensity * 0.3} />
+			<radialGradient id="{blob.gradientId}Main" cx="50%" cy="50%" r="50%" style="--tv-blob-intensity: {blob.intensity}">
+				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.9)" />
+				<stop offset="50%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.6)" />
+				<stop offset="80%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.3)" />
 				<stop offset="100%" stop-color={blob.color} stop-opacity="0" />
 			</radialGradient>
 
 			<!-- Core gradient (inner highlight) -->
-			<radialGradient id="{blob.gradientId}Core" cx="50%" cy="50%" r="30%">
-				<stop offset="0%" stop-color={blob.color} stop-opacity={blob.intensity * 1.0} />
-				<stop offset="60%" stop-color={blob.color} stop-opacity={blob.intensity * 0.7} />
-				<stop offset="100%" stop-color={blob.color} stop-opacity={blob.intensity * 0.3} />
+			<radialGradient id="{blob.gradientId}Core" cx="50%" cy="50%" r="30%" style="--tv-blob-intensity: {blob.intensity}">
+				<stop offset="0%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 1.0)" />
+				<stop offset="60%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.7)" />
+				<stop offset="100%" stop-color={blob.color} stop-opacity="calc(var(--tv-blob-intensity) * 0.3)" />
 			</radialGradient>
 		{/each}
 	</defs>
