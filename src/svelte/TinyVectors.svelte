@@ -102,7 +102,7 @@
 	};
 
 	export async function requestDeviceMotionPermission(): Promise<boolean> {
-		if (!browser || !enableDeviceMotion || !detectDeviceMotionCapability()) return false;
+		if (!browser || !enableDeviceMotion || !physics || !detectDeviceMotionCapability()) return false;
 
 		deviceMotion ??= createDeviceMotion();
 
