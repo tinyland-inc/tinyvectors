@@ -12,6 +12,13 @@ const distEntry = resolve(packageRoot, 'dist/index.js');
 const targetGzipKiB = parsePositiveKiB('TINYVECTORS_TARGET_GZIP_KIB', 11);
 const maxGzipKiB = parsePositiveKiB('TINYVECTORS_MAX_GZIP_KIB', 12);
 
+if (maxGzipKiB < targetGzipKiB) {
+	console.error(
+		'TINYVECTORS_MAX_GZIP_KIB must be greater than or equal to TINYVECTORS_TARGET_GZIP_KIB',
+	);
+	process.exit(1);
+}
+
 if (!existsSync(distEntry)) {
 	console.error(`Bundle entry is missing: ${distEntry}`);
 	console.error('Run: pnpm run build');
