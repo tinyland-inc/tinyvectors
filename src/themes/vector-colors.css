@@ -2,6 +2,21 @@
  * Uses Skeleton's .dark class for theme switching
  */
 
+/* Per-blob intensity, registered so calc() in SVG stop-opacity is
+ * interpolated as a number rather than a string. Set inline on each
+ * <radialGradient> from blob.intensity in BlobSVG.svelte; gradient
+ * stops compute their actual opacity via calc(var(--tv-blob-intensity)
+ * * <stop-fraction>). Avoids ~60 reactive expressions per frame in
+ * Svelte (one per stop-opacity arithmetic) — the inline style still
+ * re-runs each frame, but only ~5 evaluations per frame total
+ * (one per blob, not per stop).
+ */
+@property --tv-blob-intensity {
+	syntax: '<number>';
+	inherits: true;
+	initial-value: 1;
+}
+
 /* Light mode defaults */
 :root {
 	/* === Trans Pride Colors === */
