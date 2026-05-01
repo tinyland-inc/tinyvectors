@@ -1,6 +1,10 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { DeviceMotion } from '../../src/motion/DeviceMotion.js';
+import {
+	DeviceMotion,
+	getDeviceMotionCapabilityState,
+	isDeviceMotionPermissionRequired,
+} from '../../src/motion/DeviceMotion.js';
 
 type PermissionResponse = 'granted' | 'denied';
 
@@ -125,6 +129,24 @@ afterEach(() => {
 });
 
 describe('DeviceMotion', () => {
+	it('reports capability and permission requirement without creating a listener', () => {
+		const requestPermission = vi.fn().mockResolvedValue('granted' as const);
+		createMotionEnvironment({ permission: requestPermission });
+
+		expect(getDeviceMotionCapabilityState()).toBe('unknown');
+		expect(isDeviceMotionPermissionRequired()).toBe(true);
+		expect(requestPermission).not.toHaveBeenCalled();
+	});
+
+	it('reports insecure and unsupported capability states', () => {
+		createMotionEnvironment({ secure: false });
+		expect(getDeviceMotionCapabilityState()).toBe('insecure');
+
+		createMotionEnvironment({ orientation: false });
+		expect(getDeviceMotionCapabilityState()).toBe('unsupported');
+		expect(isDeviceMotionPermissionRequired()).toBe(false);
+	});
+
 	it('reports unsupported when initialized without a browser window', async () => {
 		const motion = new DeviceMotion(vi.fn());
 

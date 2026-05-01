@@ -92,6 +92,16 @@ function getPermissionApi(): (() => Promise<'granted' | 'denied'>) | null {
 	return typeof requestPermission === 'function' ? requestPermission.bind(constructor) : null;
 }
 
+export function getDeviceMotionCapabilityState(): DeviceMotionPermissionState {
+	if (typeof window === 'undefined') return 'unsupported';
+	if (!window.isSecureContext) return 'insecure';
+	return 'DeviceOrientationEvent' in window ? 'unknown' : 'unsupported';
+}
+
+export function isDeviceMotionPermissionRequired(): boolean {
+	return getPermissionApi() !== null;
+}
+
 function getScreenOrientationAngle(): number {
 	if (typeof screen === 'undefined') return 0;
 	return screen.orientation?.angle ?? 0;
@@ -233,18 +243,9 @@ export class DeviceMotion {
 	private detectSupport(): boolean {
 		if (this.disposed) return false;
 
-		if (typeof window === 'undefined') {
-			this.permissionState = 'unsupported';
-			return false;
-		}
-
-		if (!window.isSecureContext) {
-			this.permissionState = 'insecure';
-			return false;
-		}
-
-		if (!('DeviceOrientationEvent' in window)) {
-			this.permissionState = 'unsupported';
+		const capabilityState = getDeviceMotionCapabilityState();
+		if (capabilityState !== 'unknown') {
+			this.permissionState = capabilityState;
 			return false;
 		}
 

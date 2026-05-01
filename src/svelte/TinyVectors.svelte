@@ -4,7 +4,8 @@
 	import { BlobPhysics, type BlobPhysicsConfig } from '../core/BlobPhysics.js';
 	import {
 		DeviceMotion,
-		type DeviceMotionPermissionState,
+		getDeviceMotionCapabilityState,
+		isDeviceMotionPermissionRequired,
 		type MotionVector,
 	} from '../motion/DeviceMotion.js';
 	import {
@@ -84,22 +85,7 @@
 	});
 
 	const detectDeviceMotionCapability = (): boolean => {
-		if (!browser || !window.isSecureContext) return false;
-		return 'DeviceOrientationEvent' in window;
-	};
-
-	const getDeviceMotionCapabilityState = (): DeviceMotionPermissionState => {
-		if (!browser || typeof window === 'undefined') return 'unsupported';
-		if (!window.isSecureContext) return 'insecure';
-		return 'DeviceOrientationEvent' in window ? 'unknown' : 'unsupported';
-	};
-
-	const requiresDeviceMotionPermission = (): boolean => {
-		if (!browser || typeof window === 'undefined') return false;
-		const constructor = (window as unknown as {
-			DeviceOrientationEvent?: { requestPermission?: unknown };
-		}).DeviceOrientationEvent;
-		return typeof constructor?.requestPermission === 'function';
+		return browser && getDeviceMotionCapabilityState() === 'unknown';
 	};
 
 	const createDeviceMotion = (): DeviceMotion =>
@@ -142,7 +128,7 @@
 		return {
 			enabled: enableDeviceMotion,
 			supported: capabilityState !== 'unsupported' && capabilityState !== 'insecure',
-			requiresPermission: requiresDeviceMotionPermission(),
+			requiresPermission: browser && isDeviceMotionPermissionRequired(),
 			permissionState,
 			active: deviceMotion?.isActive() ?? false,
 		};
