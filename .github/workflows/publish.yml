@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   package:
-    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@21e0093a7586931ee69d716387e00556c6da7738
+    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@d202fc07c0f311c2678a551a9bce1b2a867f6ae4
     with:
       runner_mode: hosted
       workspace_mode: isolated
