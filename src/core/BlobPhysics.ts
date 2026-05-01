@@ -16,6 +16,10 @@ import type { ConvexBlob, GravityVector, TiltVector } from './types.js';
 import { SpatialHash } from './SpatialHash.js';
 import { GaussianKernel } from './GaussianKernel.js';
 import { SpringSystem, DEFAULT_SPRING_CONFIG, type SpringConfig } from './SpringSystem.js';
+import { directionalBiasField } from './InteractionField.js';
+
+const ACCELEROMETER_STRENGTH = 0.0008;
+const ACCELEROMETER_MAX_FORCE = 0.003;
 
 export interface BlobPhysicsConfig {
 	antiClusteringStrength: number;
@@ -33,7 +37,7 @@ export interface BlobPhysicsConfig {
 	springConfig: Partial<SpringConfig>;
 }
 
-const DEFAULT_CONFIG: BlobPhysicsConfig = {
+export const DEFAULT_BLOB_PHYSICS_CONFIG: BlobPhysicsConfig = {
 	antiClusteringStrength: 0.15,
 	bounceDamping: 0.7,
 	deformationSpeed: 0.5,
@@ -56,11 +60,10 @@ export class BlobPhysics {
 	private mouseY = 50;
 	private mouseVelX = 0;
 	private mouseVelY = 0;
-	private lastMouseX = 50;
-	private lastMouseY = 50;
 
 	
 	private gravity: GravityVector = { x: 0, y: 0 };
+	private gravityField: GravityVector = { x: 0, y: 0 };
 	private tilt: TiltVector = { x: 0, y: 0, z: 0 };
 	private scrollStickiness = 0;
 
@@ -72,10 +75,11 @@ export class BlobPhysics {
 	private spatialHash: SpatialHash;
 	private gaussianKernel: GaussianKernel;
 	private springSystem: SpringSystem;
+	private controlRadiusScratch: number[] = [];
 
 	constructor(numBlobs: number, config: Partial<BlobPhysicsConfig> = {}) {
 		this.numBlobs = numBlobs;
-		this.config = { ...DEFAULT_CONFIG, ...config };
+		this.config = { ...DEFAULT_BLOB_PHYSICS_CONFIG, ...config };
 
 		
 		this.spatialHash = new SpatialHash(60); 
@@ -115,6 +119,11 @@ export class BlobPhysics {
 
 	setGravity(gravity: GravityVector): void {
 		this.gravity = gravity;
+		this.gravityField = directionalBiasField(
+			gravity,
+			ACCELEROMETER_STRENGTH,
+			ACCELEROMETER_MAX_FORCE,
+		);
 	}
 
 	
@@ -199,10 +208,10 @@ export class BlobPhysics {
 
 
 	updateMousePosition(x: number, y: number): void {
-		this.mouseVelX = x - this.lastMouseX;
-		this.mouseVelY = y - this.lastMouseY;
-		this.lastMouseX = this.mouseX;
-		this.lastMouseY = this.mouseY;
+		const previousMouseX = this.mouseX;
+		const previousMouseY = this.mouseY;
+		this.mouseVelX = x - previousMouseX;
+		this.mouseVelY = y - previousMouseY;
 		this.mouseX = x;
 		this.mouseY = y;
 	}
@@ -210,15 +219,21 @@ export class BlobPhysics {
 	
 
 
+	// Mutate blob.color in place when themeColors is supplied — kills the
+	// 300 object spreads/sec the previous .map(blob => ({...blob, color}))
+	// performed at 5 blobs × 60 fps. Return a *shallow copy* so the array
+	// reference is fresh each call: TinyVectors.svelte assigns the result
+	// to a $state rune inside its rAF loop, and Svelte 5's signal compares
+	// by reference — returning the same array would freeze the animation
+	// after frame 1. Same blob object refs across calls; only the outer
+	// array shell is reallocated.
 	getBlobs(themeColors?: string[]): ConvexBlob[] {
 		if (themeColors && themeColors.length > 0) {
-			
-			return this.blobs.map((blob, i) => ({
-				...blob,
-				color: themeColors[i % themeColors.length],
-			}));
+			for (let i = 0; i < this.blobs.length; i++) {
+				this.blobs[i].color = themeColors[i % themeColors.length];
+			}
 		}
-		return this.blobs;
+		return this.blobs.slice();
 	}
 
 	
@@ -249,21 +264,23 @@ export class BlobPhysics {
 		
 		const convexPoints = this.generateConvexHull(points);
 
-		
-		let path = `M ${convexPoints[0].x.toFixed(2)},${convexPoints[0].y.toFixed(2)}`;
+		// Numbers are interpolated directly: Number.prototype.toString() in
+		// V8 is faster than toFixed and SVG accepts any precision. Each
+		// .toFixed call allocated a fresh string ~18,000 times/sec at
+		// 5 blobs × 12 control points × 60 fps.
+		let path = `M ${convexPoints[0].x},${convexPoints[0].y}`;
 
 		for (let i = 0; i < convexPoints.length; i++) {
 			const current = convexPoints[i];
 			const next = convexPoints[(i + 1) % convexPoints.length];
 			const nextNext = convexPoints[(i + 2) % convexPoints.length];
 
-			
 			const cp1x = current.x + (next.x - current.x) * 0.15;
 			const cp1y = current.y + (next.y - current.y) * 0.15;
 			const cp2x = next.x - (nextNext.x - current.x) * 0.05;
 			const cp2y = next.y - (nextNext.y - current.y) * 0.05;
 
-			path += ` C ${cp1x.toFixed(2)},${cp1y.toFixed(2)} ${cp2x.toFixed(2)},${cp2y.toFixed(2)} ${next.x.toFixed(2)},${next.y.toFixed(2)}`;
+			path += ` C ${cp1x},${cp1y} ${cp2x},${cp2y} ${next.x},${next.y}`;
 		}
 
 		path += ' Z';
@@ -436,6 +453,9 @@ export class BlobPhysics {
 		
 		this.applyAccelerometerForces(blob);
 
+
+		this.applyPointerField(blob);
+
 		
 		this.updateMovementWithAccelerometer(blob, time);
 
@@ -463,20 +483,28 @@ export class BlobPhysics {
 	}
 
 	private applyAccelerometerForces(blob: ConvexBlob): void {
-		const accelerometerStrength = 0.0008;
-		const maxForce = 0.003;
-
-		const gravityX = Math.max(-maxForce, Math.min(maxForce, this.gravity.x * accelerometerStrength));
-		const gravityY = Math.max(-maxForce, Math.min(maxForce, this.gravity.y * accelerometerStrength));
-
-		blob.velocityX += gravityX;
-		blob.velocityY += gravityY;
+		blob.velocityX += this.gravityField.x;
+		blob.velocityY += this.gravityField.y;
 
 		
 		if (blob.controlPoints && (Math.abs(this.gravity.x) > 0.3 || Math.abs(this.gravity.y) > 0.3)) {
 			const deformationAmount = Math.min(0.08, (Math.abs(this.gravity.x) + Math.abs(this.gravity.y)) * 0.02);
 			blob.chaosLevel = Math.min((blob.chaosLevel || 0) + deformationAmount, 0.2);
 		}
+	}
+
+	private applyPointerField(blob: ConvexBlob): void {
+		if (this.mouseX === 50 && this.mouseY === 50) return;
+
+		const dx = this.mouseX - blob.currentX;
+		const dy = this.mouseY - blob.currentY;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+		if (distance === 0 || distance >= 34) return;
+
+		const normalized = 1 - distance / 34;
+		const scale = (normalized * normalized * 0.0014) / distance;
+		blob.velocityX += dx * scale;
+		blob.velocityY += dy * scale;
 	}
 
 	private updateMovementWithAccelerometer(blob: ConvexBlob, time: number): void {
@@ -651,27 +679,32 @@ export class BlobPhysics {
 	private smoothControlPoints(blob: ConvexBlob): void {
 		if (!blob.controlPoints || blob.controlPoints.length < 3) return;
 
-		for (let i = 0; i < blob.controlPoints.length; i++) {
-			const current = blob.controlPoints[i];
-			const prev = blob.controlPoints[(i - 1 + blob.controlPoints.length) % blob.controlPoints.length];
-			const next = blob.controlPoints[(i + 1) % blob.controlPoints.length];
+		const controlPoints = blob.controlPoints;
+		const originalRadii = this.controlRadiusScratch;
+		const pointCount = controlPoints.length;
+
+		for (let i = 0; i < pointCount; i++) {
+			originalRadii[i] = controlPoints[i].radius;
+		}
+
+		for (let i = 0; i < pointCount; i++) {
+			const current = controlPoints[i];
+			const prevRadius = originalRadii[(i - 1 + pointCount) % pointCount];
+			const currentRadius = originalRadii[i];
+			const nextRadius = originalRadii[(i + 1) % pointCount];
 
 			
-			const avgRadius = (prev.radius + current.radius + next.radius) / 3;
+			const avgRadius = (prevRadius + currentRadius + nextRadius) / 3;
 			const smoothingFactor = 0.05;
-			current.radius = current.radius * (1 - smoothingFactor) + avgRadius * smoothingFactor;
+			current.radius = currentRadius * (1 - smoothingFactor) + avgRadius * smoothingFactor;
 
 			
 			const minRadiusDiff = blob.size * 0.1;
-			if (Math.abs(current.radius - prev.radius) > minRadiusDiff) {
-				const adjustment = (Math.abs(current.radius - prev.radius) - minRadiusDiff) * 0.5;
-				if (current.radius > prev.radius) {
-					current.radius -= adjustment;
-					prev.radius += adjustment;
-				} else {
-					current.radius += adjustment;
-					prev.radius -= adjustment;
-				}
+			const neighborRadius = (prevRadius + nextRadius) * 0.5;
+			const radiusDiff = current.radius - neighborRadius;
+			const excessRadiusDiff = Math.abs(radiusDiff) - minRadiusDiff;
+			if (excessRadiusDiff > 0) {
+				current.radius -= radiusDiff > 0 ? excessRadiusDiff * 0.5 : -excessRadiusDiff * 0.5;
 			}
 		}
 	}

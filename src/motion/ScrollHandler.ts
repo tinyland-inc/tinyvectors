@@ -1,11 +1,7 @@
-
-
-
-
-
-
 export interface ScrollHandlerConfig {
+	/** Per-frame decay multiplier for scroll stickiness and velocity. Defaults to 0.92. */
 	decayRate?: number;
+	/** Maximum retained pull-force impulses. Defaults to 8, or 10 for explosive scrolls. Use 0 to keep scroll stickiness without retained pull forces. */
 	maxForces?: number;
 }
 
@@ -23,12 +19,21 @@ export class ScrollHandler {
 	private scrollDirection = 0;
 	private pullForces: PullForce[] = [];
 	private peakVelocity = 0;
+	private decayFrame: number | null = null;
+	private scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
+	private disposed = false;
+	private maxForces: number | null = null;
 
 	constructor(config?: ScrollHandlerConfig) {
 		if (config?.decayRate) this.decayRate = config.decayRate;
+		if (typeof config?.maxForces === 'number') {
+			this.maxForces = Math.max(0, Math.floor(config.maxForces));
+		}
 	}
 
 	public handleScroll(event: WheelEvent): void {
+		if (this.disposed) return;
+
 		const currentTime = Date.now();
 		const deltaTime = currentTime - this.lastScrollTime;
 
@@ -67,9 +72,17 @@ export class ScrollHandler {
 
 		this.lastScrollTime = currentTime;
 		this.startDecay();
+		this.scheduleScrollEnd();
+	}
 
-		setTimeout(() => {
-			if (currentTime - this.lastScrollTime >= 200) {
+	private scheduleScrollEnd(): void {
+		if (this.scrollEndTimer !== null) {
+			clearTimeout(this.scrollEndTimer);
+		}
+
+		this.scrollEndTimer = setTimeout(() => {
+			this.scrollEndTimer = null;
+			if (Date.now() - this.lastScrollTime >= 200) {
 				this.isScrolling = false;
 				this.totalScrollDistance = 0;
 				this.peakVelocity = 0;
@@ -81,7 +94,7 @@ export class ScrollHandler {
 		speedStickiness: number,
 		distanceStickiness: number,
 		direction: number,
-		explosive: boolean
+		explosive: boolean,
 	): void {
 		if (direction <= 0 || speedStickiness > 0.4 || distanceStickiness > 0.4 || explosive) {
 			let pullStrength = speedStickiness + distanceStickiness * 0.7;
@@ -100,17 +113,23 @@ export class ScrollHandler {
 				strength: pullStrength,
 				time: 0,
 				randomness: randomnessFactor,
-				explosive: explosive,
+				explosive,
 			});
 
-			if (this.pullForces.length > (explosive ? 10 : 8)) {
-				this.pullForces.shift();
+			const maxForces = this.maxForces ?? (explosive ? 10 : 8);
+			if (this.pullForces.length > maxForces) {
+				this.pullForces.splice(0, this.pullForces.length - maxForces);
 			}
 		}
 	}
 
 	private startDecay(): void {
+		if (this.decayFrame !== null) return;
+
 		const decay = () => {
+			this.decayFrame = null;
+			if (this.disposed) return;
+
 			this.stickiness *= this.decayRate;
 			this.scrollVelocity *= this.decayRate;
 
@@ -126,13 +145,13 @@ export class ScrollHandler {
 				}));
 
 			if (this.stickiness > 0.01 || this.pullForces.length > 0) {
-				requestAnimationFrame(decay);
+				this.decayFrame = requestAnimationFrame(decay);
 			} else {
 				this.stickiness = 0;
 				this.scrollVelocity = 0;
 			}
 		};
-		requestAnimationFrame(decay);
+		this.decayFrame = requestAnimationFrame(decay);
 	}
 
 	public getStickiness(): number {
@@ -161,5 +180,26 @@ export class ScrollHandler {
 
 	public getPeakVelocity(): number {
 		return this.peakVelocity;
+	}
+
+	public dispose(): void {
+		this.disposed = true;
+
+		if (this.decayFrame !== null) {
+			cancelAnimationFrame(this.decayFrame);
+			this.decayFrame = null;
+		}
+
+		if (this.scrollEndTimer !== null) {
+			clearTimeout(this.scrollEndTimer);
+			this.scrollEndTimer = null;
+		}
+
+		this.stickiness = 0;
+		this.scrollVelocity = 0;
+		this.totalScrollDistance = 0;
+		this.peakVelocity = 0;
+		this.isScrolling = false;
+		this.pullForces = [];
 	}
 }

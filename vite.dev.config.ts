@@ -2,6 +2,9 @@ import { defineConfig } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { resolve } from 'path';
 
+const devServerPort = Number(process.env.TINYVECTORS_VITE_PORT ?? 5175);
+const hmrPort = Number(process.env.TINYVECTORS_VITE_HMR_PORT ?? 24679);
+
 export default defineConfig({
 	root: resolve(__dirname, 'dev'),
 
@@ -20,10 +23,10 @@ export default defineConfig({
 	},
 
 	server: {
-		port: 5175,
-		open: true,
+		port: devServerPort,
+		open: process.env.CI === 'true' ? false : true,
 		hmr: {
-			port: 24679, 
+			port: hmrPort,
 		},
 	},
 });

@@ -1,0 +1,9 @@
+.direnv
+.pnpm-store
+bazel-bin
+bazel-out
+bazel-testlogs
+coverage
+dist
+dist-types
+node_modules

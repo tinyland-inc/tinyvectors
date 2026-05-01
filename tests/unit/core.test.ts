@@ -16,6 +16,11 @@ import {
 } from '../../src/core/PathGenerator.js';
 import { SpatialHash } from '../../src/core/SpatialHash.js';
 import { GaussianKernel } from '../../src/core/GaussianKernel.js';
+import {
+  BlobPhysics,
+  DEFAULT_BLOB_PHYSICS_CONFIG,
+  type BlobPhysicsConfig,
+} from '../../src/core/BlobPhysics.js';
 import type { RenderBlob } from '../../src/core/schema.js';
 import type { ConvexBlob, ControlPoint } from '../../src/core/types.js';
 
@@ -91,6 +96,24 @@ function createTestConvexBlob(x: number, y: number, size: number = 25): ConvexBl
     personalSpace: 45,
     repulsionStrength: 0.03,
   };
+}
+
+function smoothTestControlRadii(radii: number[]): number[] {
+  const blob = createTestConvexBlob(50, 50, 20);
+  blob.controlPoints?.forEach((point, index) => {
+    point.radius = radii[index];
+    point.baseRadius = radii[index];
+    point.targetRadius = radii[index];
+  });
+
+  const physics = new BlobPhysics(0);
+  (
+    physics as unknown as {
+      smoothControlPoints(blob: ConvexBlob): void;
+    }
+  ).smoothControlPoints(blob);
+
+  return blob.controlPoints?.map((point) => point.radius) ?? [];
 }
 
 
@@ -219,6 +242,145 @@ describe('PathGenerator', () => {
   });
 });
 
+
+
+
+
+describe('BlobPhysics', () => {
+  it('owns the TinyVectors default physics configuration', () => {
+    expect(DEFAULT_BLOB_PHYSICS_CONFIG).toEqual({
+      antiClusteringStrength: 0.15,
+      bounceDamping: 0.7,
+      deformationSpeed: 0.5,
+      territoryStrength: 0.1,
+      viscosity: 0.3,
+      useSpatialHash: true,
+      useGaussianSmoothing: true,
+      useSpringSystem: true,
+      springConfig: {},
+    });
+  });
+
+  it('merges caller overrides on top of internal defaults', () => {
+    const physics = new BlobPhysics(2, {
+      antiClusteringStrength: 0.25,
+      useSpatialHash: false,
+    });
+    const config = (physics as unknown as { config: BlobPhysicsConfig }).config;
+
+    expect(config).toEqual({
+      ...DEFAULT_BLOB_PHYSICS_CONFIG,
+      antiClusteringStrength: 0.25,
+      useSpatialHash: false,
+    });
+  });
+
+  it('smooths control points without start-index directional bias', () => {
+    const radii = [20, 40, 20, 10, 30, 20, 35, 15];
+    const rotatedRadii = [radii[radii.length - 1], ...radii.slice(0, -1)];
+    const expected = smoothTestControlRadii(radii);
+    const rotatedResult = smoothTestControlRadii(rotatedRadii);
+    const rotatedBack = [...rotatedResult.slice(1), rotatedResult[0]];
+
+    expect(rotatedBack).toHaveLength(expected.length);
+    for (let i = 0; i < expected.length; i++) {
+      expect(rotatedBack[i]).toBeCloseTo(expected[i], 10);
+    }
+  });
+
+  it('smooths control points without winding-order directional bias', () => {
+    const radii = [20, 40, 20, 10, 30, 20, 35, 15];
+    const mirroredRadii = [radii[0], ...radii.slice(1).reverse()];
+    const expected = smoothTestControlRadii(radii);
+    const mirroredResult = smoothTestControlRadii(mirroredRadii);
+    const mirroredBack = [mirroredResult[0], ...mirroredResult.slice(1).reverse()];
+
+    expect(mirroredBack).toHaveLength(expected.length);
+    for (let i = 0; i < expected.length; i++) {
+      expect(mirroredBack[i]).toBeCloseTo(expected[i], 10);
+    }
+  });
+
+  it('applies device gravity as a bounded directional field', () => {
+    const physics = new BlobPhysics(0);
+    const blob = createTestConvexBlob(50, 50, 20);
+    const applyAccelerometerForces = (
+      physics as unknown as {
+        applyAccelerometerForces(blob: ConvexBlob): void;
+      }
+    ).applyAccelerometerForces.bind(physics);
+
+    physics.setGravity({ x: 3, y: 4 });
+    applyAccelerometerForces(blob);
+
+    const magnitude = Math.sqrt(blob.velocityX * blob.velocityX + blob.velocityY * blob.velocityY);
+    expect(magnitude).toBeCloseTo(0.003);
+    expect(blob.velocityX).toBeGreaterThan(0);
+    expect(blob.velocityY).toBeGreaterThan(0);
+    expect(blob.velocityX / blob.velocityY).toBeCloseTo(3 / 4);
+  });
+
+  it('tracks pointer position and velocity without applying distant pointer force', () => {
+    const physics = new BlobPhysics(0);
+    const blob = createTestConvexBlob(30, 50, 20);
+    const internals = physics as unknown as {
+      mouseX: number;
+      mouseY: number;
+      mouseVelX: number;
+      mouseVelY: number;
+      updateScreensaverPhysics(blob: ConvexBlob, deltaTime: number, time: number): void;
+    };
+
+    physics.updateMousePosition(75, 25);
+
+    expect(internals.mouseX).toBe(75);
+    expect(internals.mouseY).toBe(25);
+    expect(internals.mouseVelX).toBe(25);
+    expect(internals.mouseVelY).toBe(-25);
+
+    internals.updateScreensaverPhysics(blob, 0.016, 0);
+
+    expect(blob.mouseDistance).toBeCloseTo(Math.sqrt((30 - 75) ** 2 + (50 - 25) ** 2));
+  });
+
+  it('applies pointer influence as a local field after pointer input', () => {
+    const physics = new BlobPhysics(0);
+    const near = createTestConvexBlob(60, 50, 20);
+    const far = createTestConvexBlob(5, 50, 20);
+    const centered = createTestConvexBlob(60, 50, 20);
+    const internals = physics as unknown as {
+      applyPointerField(blob: ConvexBlob): void;
+    };
+
+    internals.applyPointerField(centered);
+
+    expect(centered.velocityX).toBe(0);
+    expect(centered.velocityY).toBe(0);
+
+    physics.updateMousePosition(75, 50);
+    internals.applyPointerField(near);
+    internals.applyPointerField(far);
+
+    expect(near.velocityX).toBeGreaterThan(0);
+    expect(near.velocityY).toBe(0);
+    expect(far.velocityX).toBe(0);
+    expect(far.velocityY).toBe(0);
+  });
+
+  it('computes pointer velocity from the previous pointer anchor', () => {
+    const physics = new BlobPhysics(0);
+    const internals = physics as unknown as {
+      mouseVelX: number;
+      mouseVelY: number;
+    };
+
+    physics.updateMousePosition(75, 25);
+    physics.updateMousePosition(80, 20);
+
+    expect(internals.mouseVelX).toBe(5);
+    expect(internals.mouseVelY).toBe(-5);
+  });
+});
 
 
 

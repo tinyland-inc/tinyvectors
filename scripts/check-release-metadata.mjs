@@ -6,7 +6,33 @@ const read = (relativePath) =>
 const packageJson = JSON.parse(read('../package.json'));
 const moduleBazel = read('../MODULE.bazel');
 const buildBazel = read('../BUILD.bazel');
+const ciWorkflow = read('../.github/workflows/ci.yml');
+const publishWorkflow = read('../.github/workflows/publish.yml');
 const expectedPnpmVersion = packageJson.packageManager?.replace(/^pnpm@/, '');
+const expectedNodeMajor = packageJson.engines?.node?.match(/>=\s*(\d+)/)?.[1];
+const expectedBazelTargets =
+	'//:pkg //:package_consumer_check //:bundle_size_check //:typecheck //:test';
+const expectedPackageDir = './bazel-bin/pkg';
+const expectedPackageConsumerCommand = 'node scripts/check-package-consumer.mjs ./bazel-bin/pkg';
+const expectedPackageCheckCommand = 'pnpm run check:package && pnpm run check:bundle-size';
+const expectedPrepublishOnlyCommand =
+	'pnpm run check:release-metadata && pnpm run build && pnpm run check:package && pnpm run check:bundle-size';
+const expectedSharedWorkflowInputs = {
+	runner_mode: 'hosted',
+	workspace_mode: 'isolated',
+	publish_mode: 'same_runner',
+	node_versions: `["${expectedNodeMajor}"]`,
+	publish_node_version: expectedNodeMajor,
+	pnpm_version: expectedPnpmVersion,
+	metadata_check_command: 'pnpm run check:release-metadata',
+	typecheck_command: 'pnpm run check',
+	unit_test_command: 'pnpm run test',
+	build_command: 'pnpm run build',
+	package_check_command: expectedPackageCheckCommand,
+	bazel_targets: expectedBazelTargets,
+	package_dir: expectedPackageDir,
+	npm_access: 'public',
+};
 
 const extract = (source, pattern, label) => {
 	const match = source.match(pattern);
@@ -15,6 +41,24 @@ const extract = (source, pattern, label) => {
 	}
 	return match[1];
 };
+
+const extractWorkflowValue = (source, key, label) => {
+	const rawValue = extract(source, new RegExp(`^\\s*${key}:\\s*(.+?)\\s*$`, 'm'), label).trim();
+	if (
+		(rawValue.startsWith("'") && rawValue.endsWith("'")) ||
+		(rawValue.startsWith('"') && rawValue.endsWith('"'))
+	) {
+		return rawValue.slice(1, -1);
+	}
+	return rawValue;
+};
+
+const sharedPackageWorkflow = (source, label) =>
+	extract(
+		source,
+		/uses:\s*(tinyland-inc\/ci-templates\/\.github\/workflows\/js-bazel-package\.yml@[0-9a-f]{40})/,
+		label,
+	);
 
 const checks = [
 	{
@@ -49,9 +93,67 @@ const checks = [
 		actual: extract(moduleBazel, /pnpm_version = "([^"]+)"/, 'pnpm_version'),
 		expected: expectedPnpmVersion,
 	},
+	{
+		label: 'MODULE.bazel Node toolchain major',
+		actual: extract(moduleBazel, /node_version = "(\d+)\./, 'node_version'),
+		expected: expectedNodeMajor,
+	},
+	{
+		label: 'CI reusable package workflow',
+		actual: sharedPackageWorkflow(ciWorkflow, 'CI reusable workflow'),
+		expected: sharedPackageWorkflow(publishWorkflow, 'publish reusable workflow'),
+	},
+	{
+		label: 'package consumer check script',
+		actual: packageJson.scripts?.['check:package-consumer'],
+		expected: expectedPackageConsumerCommand,
+	},
+	{
+		label: 'bundle size check script',
+		actual: packageJson.scripts?.['check:bundle-size'],
+		expected: 'node scripts/check-bundle-size.mjs',
+	},
+	{
+		label: 'prepublishOnly script',
+		actual: packageJson.scripts?.prepublishOnly,
+		expected: expectedPrepublishOnlyCommand,
+	},
+	{
+		label: 'CI publish dry-run',
+		actual: extractWorkflowValue(ciWorkflow, 'dry_run', 'CI dry_run'),
+		expected: 'true',
+	},
+	{
+		label: 'tag publish dry-run',
+		actual: extractWorkflowValue(publishWorkflow, 'dry_run', 'publish dry_run'),
+		expected: 'false',
+	},
 ];
 
+for (const [key, expected] of Object.entries(expectedSharedWorkflowInputs)) {
+	checks.push(
+		{
+			label: `CI ${key}`,
+			actual: extractWorkflowValue(ciWorkflow, key, `CI ${key}`),
+			expected,
+		},
+		{
+			label: `publish ${key}`,
+			actual: extractWorkflowValue(publishWorkflow, key, `publish ${key}`),
+			expected,
+		},
+	);
+}
+
 const failures = checks.filter((check) => check.actual !== check.expected);
+
+if (packageJson.publishConfig?.provenance && !/id-token:\s*write/.test(publishWorkflow)) {
+	failures.push({
+		label: 'publish workflow id-token permission',
+		actual: 'missing',
+		expected: 'write',
+	});
+}
 
 if (failures.length > 0) {
 	for (const failure of failures) {

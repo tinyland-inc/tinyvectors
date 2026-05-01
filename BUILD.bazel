@@ -14,11 +14,10 @@ Build strategy:
   - vitest for PBT tests (property-based tests using fast-check)
 """
 
-load("@aspect_rules_js//js:defs.bzl", "js_library", "js_run_binary")
+load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_run_binary")
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@tummycrypt_tinyvectors_npm//:defs.bzl", "npm_link_all_packages")
 load("@tummycrypt_tinyvectors_npm//:svelte-check/package_json.bzl", svelte_check_bin = "bin")
-load("@tummycrypt_tinyvectors_npm//:typescript/package_json.bzl", typescript_bin = "bin")
 load("@tummycrypt_tinyvectors_npm//:vite/package_json.bzl", vite_bin = "bin")
 load("@tummycrypt_tinyvectors_npm//:vitest/package_json.bzl", vitest_bin = "bin")
 
@@ -29,8 +28,36 @@ load("@tummycrypt_tinyvectors_npm//:vitest/package_json.bzl", vitest_bin = "bin"
 npm_link_all_packages(name = "node_modules")
 
 vite_bin.vite_binary(name = "vite")
-typescript_bin.tsc_binary(name = "tsc")
 svelte_check_bin.svelte_check_binary(name = "svelte_check")
+
+js_binary(
+    name = "build_declarations",
+    data = [
+        ":node_modules",
+        ":node_modules/typescript",
+        "scripts/copy-svelte-declarations.mjs",
+    ],
+    entry_point = "scripts/build-declarations.mjs",
+)
+
+js_binary(
+    name = "check_package_consumer",
+    data = [
+        ":node_modules",
+        ":node_modules/svelte",
+        ":node_modules/typescript",
+    ],
+    entry_point = "scripts/check-package-consumer.mjs",
+)
+
+js_binary(
+    name = "check_bundle_size",
+    data = [
+        ":node_modules",
+        ":node_modules/vite",
+    ],
+    entry_point = "scripts/check-bundle-size.mjs",
+)
 
 
 # =============================================================================
@@ -73,19 +100,18 @@ js_run_binary(
 
 js_run_binary(
     name = "tinyvectors_declarations",
-    tool = "//:tsc",
+    tool = "//:build_declarations",
     srcs = glob([
         "src/**/*.ts",
+        "src/**/*.svelte.d.ts",
     ]) + [
         "package.json",
         "pnpm-lock.yaml",
+        "scripts/copy-svelte-declarations.mjs",
         "tsconfig.json",
         "tsconfig.declarations.json",
         ":node_modules",
-    ],
-    args = [
-        "-p",
-        "$(execpath tsconfig.declarations.json)",
+        ":node_modules/typescript",
     ],
     out_dirs = ["dist-types"],
     visibility = ["//visibility:public"],
@@ -112,12 +138,44 @@ npm_package(
     srcs = [
         "package.json",
         "README.md",
+        "CHANGELOG.md",
         "LICENSE",
         "src/themes/vector-colors.css",
         ":tinyvectors",
     ],
     package = "@tummycrypt/tinyvectors",
-    version = "0.2.5",
+    version = "0.3.0",
+    visibility = ["//visibility:public"],
+)
+
+js_run_binary(
+    name = "package_consumer_check",
+    tool = "//:check_package_consumer",
+    srcs = [
+        ":pkg",
+        ":node_modules",
+        ":node_modules/svelte",
+        ":node_modules/typescript",
+    ],
+    args = [
+        "$(rootpath :pkg)",
+    ],
+    stdout = "package-consumer-check.log",
+    visibility = ["//visibility:public"],
+)
+
+js_run_binary(
+    name = "bundle_size_check",
+    tool = "//:check_bundle_size",
+    srcs = [
+        ":pkg",
+        ":node_modules",
+        ":node_modules/vite",
+    ],
+    args = [
+        "$(rootpath :pkg)",
+    ],
+    stdout = "bundle-size-check.log",
     visibility = ["//visibility:public"],
 )
 
