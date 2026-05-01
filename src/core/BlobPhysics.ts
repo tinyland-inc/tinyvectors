@@ -18,6 +18,9 @@ import { GaussianKernel } from './GaussianKernel.js';
 import { SpringSystem, DEFAULT_SPRING_CONFIG, type SpringConfig } from './SpringSystem.js';
 import { directionalBiasField } from './InteractionField.js';
 
+const ACCELEROMETER_STRENGTH = 0.0008;
+const ACCELEROMETER_MAX_FORCE = 0.003;
+
 export interface BlobPhysicsConfig {
 	antiClusteringStrength: number;
 	bounceDamping: number;
@@ -62,6 +65,7 @@ export class BlobPhysics {
 
 	
 	private gravity: GravityVector = { x: 0, y: 0 };
+	private gravityField: GravityVector = { x: 0, y: 0 };
 	private tilt: TiltVector = { x: 0, y: 0, z: 0 };
 	private scrollStickiness = 0;
 
@@ -116,6 +120,11 @@ export class BlobPhysics {
 
 	setGravity(gravity: GravityVector): void {
 		this.gravity = gravity;
+		this.gravityField = directionalBiasField(
+			gravity,
+			ACCELEROMETER_STRENGTH,
+			ACCELEROMETER_MAX_FORCE,
+		);
 	}
 
 	
@@ -472,12 +481,8 @@ export class BlobPhysics {
 	}
 
 	private applyAccelerometerForces(blob: ConvexBlob): void {
-		const accelerometerStrength = 0.0008;
-		const maxForce = 0.003;
-		const gravityField = directionalBiasField(this.gravity, accelerometerStrength, maxForce);
-
-		blob.velocityX += gravityField.x;
-		blob.velocityY += gravityField.y;
+		blob.velocityX += this.gravityField.x;
+		blob.velocityY += this.gravityField.y;
 
 		
 		if (blob.controlPoints && (Math.abs(this.gravity.x) > 0.3 || Math.abs(this.gravity.y) > 0.3)) {
