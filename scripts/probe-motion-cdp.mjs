@@ -319,6 +319,14 @@ try {
 					at: performance.now()
 				});
 				});
+				originalAddEventListener.call(window, 'pointermove', (event) => {
+				window.__tinyvectorsEvents.push({
+					type: 'pointermove',
+					x: event.clientX,
+					y: event.clientY,
+					at: performance.now()
+				});
+				});
 			})();
 		`,
 	});
@@ -535,6 +543,37 @@ try {
 		`Expected one deviceorientation listener, got ${listenerInitial.listeners.deviceorientation}.`,
 	);
 
+	const beforePointerMove = await evaluate(client, `({
+		firstBodyPath: document.querySelectorAll('svg g')[1]?.querySelector('path')?.getAttribute('d') ?? null,
+		pointerEvents: window.__tinyvectorsEvents.filter((event) => event.type === 'pointermove').length
+	})`);
+	await client.send('Input.dispatchMouseEvent', {
+		type: 'mouseMoved',
+		x: 120,
+		y: 180,
+		button: 'none',
+	});
+	await delay(500);
+	const afterPointerMove = await evaluate(client, `({
+		firstBodyPath: document.querySelectorAll('svg g')[1]?.querySelector('path')?.getAttribute('d') ?? null,
+		pointerEvents: window.__tinyvectorsEvents.filter((event) => event.type === 'pointermove').length,
+		lastPointerEvent: window.__tinyvectorsEvents.filter((event) => event.type === 'pointermove').at(-1)
+	})`);
+	assert(beforePointerMove.firstBodyPath, 'Pointer probe could not read initial blob geometry.');
+	assert(afterPointerMove.firstBodyPath, 'Pointer probe could not read updated blob geometry.');
+	assert(
+		afterPointerMove.pointerEvents > beforePointerMove.pointerEvents,
+		'CDP pointer move did not reach the page.',
+	);
+	assert(
+		afterPointerMove.lastPointerEvent?.x === 120 && afterPointerMove.lastPointerEvent?.y === 180,
+		`CDP pointer move reached the page with unexpected coordinates ${JSON.stringify(afterPointerMove.lastPointerEvent)}.`,
+	);
+	assert(
+		afterPointerMove.firstBodyPath !== beforePointerMove.firstBodyPath,
+		'Pointer probe did not observe animated blob geometry movement after pointer delivery.',
+	);
+
 	await client.send('Runtime.evaluate', {
 		expression: `document.getElementById('scroll-physics')?.click()`,
 		awaitPromise: true,
@@ -652,6 +691,11 @@ try {
 					windowEvents: afterCdpAccelerometer.events.length,
 					pathChanged: cdpAccelerometerChanged,
 					note: 'TinyVectors uses DeviceOrientationEvent/TiltSource; raw accelerometer CDP is informational.',
+				},
+				pointerDelivery: {
+					events: afterPointerMove.pointerEvents - beforePointerMove.pointerEvents,
+					pathChanged: afterPointerMove.firstBodyPath !== beforePointerMove.firstBodyPath,
+					lastEvent: afterPointerMove.lastPointerEvent,
 				},
 				listenerLifecycle: {
 					initial: listenerInitial.listeners,

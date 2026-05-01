@@ -320,7 +320,7 @@ describe('BlobPhysics', () => {
     expect(blob.velocityX / blob.velocityY).toBeCloseTo(3 / 4);
   });
 
-  it('tracks pointer position and velocity without applying standalone pointer force', () => {
+  it('tracks pointer position and velocity without applying distant pointer force', () => {
     const physics = new BlobPhysics(0);
     const blob = createTestConvexBlob(30, 50, 20);
     const internals = physics as unknown as {
@@ -343,11 +343,33 @@ describe('BlobPhysics', () => {
     expect(blob.mouseDistance).toBeCloseTo(Math.sqrt((30 - 75) ** 2 + (50 - 25) ** 2));
   });
 
+  it('applies pointer influence as a local field after pointer input', () => {
+    const physics = new BlobPhysics(0);
+    const near = createTestConvexBlob(60, 50, 20);
+    const far = createTestConvexBlob(5, 50, 20);
+    const centered = createTestConvexBlob(60, 50, 20);
+    const internals = physics as unknown as {
+      applyPointerField(blob: ConvexBlob): void;
+    };
+
+    internals.applyPointerField(centered);
+
+    expect(centered.velocityX).toBe(0);
+    expect(centered.velocityY).toBe(0);
+
+    physics.updateMousePosition(75, 50);
+    internals.applyPointerField(near);
+    internals.applyPointerField(far);
+
+    expect(near.velocityX).toBeGreaterThan(0);
+    expect(near.velocityY).toBe(0);
+    expect(far.velocityX).toBe(0);
+    expect(far.velocityY).toBe(0);
+  });
+
   it('computes pointer velocity from the previous pointer anchor', () => {
     const physics = new BlobPhysics(0);
     const internals = physics as unknown as {
-      lastMouseX: number;
-      lastMouseY: number;
       mouseVelX: number;
       mouseVelY: number;
     };
@@ -357,8 +379,6 @@ describe('BlobPhysics', () => {
 
     expect(internals.mouseVelX).toBe(5);
     expect(internals.mouseVelY).toBe(-5);
-    expect(internals.lastMouseX).toBe(75);
-    expect(internals.lastMouseY).toBe(25);
   });
 });
 

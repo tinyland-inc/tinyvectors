@@ -47,8 +47,8 @@ Avoid tests that lock exact coefficients, frame-by-frame positions, or one-off s
 ## Current Status
 
 - Gravity/device-orientation is routed through `InteractionField.directionalBiasField()` and cached as a bounded force outside the per-blob hot path.
-- The browser probe verifies synthetic and CDP orientation events preserve the expected motion signs, change blob geometry, and return to neutral on idle or reduced motion.
-- Pointer IO currently updates the physics pointer anchor, velocity, and per-blob `mouseDistance`; it does not apply a standalone pointer force yet.
+- The browser probe verifies synthetic and CDP orientation events preserve the expected motion signs, change blob geometry, return to neutral on idle or reduced motion, and receive a real CDP pointer move while pointer physics is active.
+- Pointer IO updates the physics pointer anchor, velocity, and per-blob `mouseDistance`; unit coverage verifies the first standalone route applies a small local pointer field only after real pointer input.
 - Scroll still uses the restored pre-Phase-A path and can use the pointer anchor for sticky attraction. Route pointer and scroll through fields only after preserving the current feel and bundle headroom.
 
 ## Implementation Slices
@@ -56,6 +56,6 @@ Avoid tests that lock exact coefficients, frame-by-frame positions, or one-off s
 1. Keep PR #39 on the restored pre-Phase-A physics and renderer baseline while retaining the motion harness, lifecycle, pointer, package, and CI work.
 2. Add pure field helpers and unit tests without changing runtime feel.
 3. Route gravity/device-orientation through the field helper while preserving ambient motion.
-4. Route pointer and scroll values through field helpers one input at a time.
+4. Route pointer and scroll values through field helpers one input at a time, starting with a low-strength local pointer field.
 5. Add browser probes for directional bias, pointer locality, and scroll decay.
 6. Revisit renderer stylability after interaction feel is stable.
