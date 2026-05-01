@@ -20,6 +20,7 @@ function createMotionEnvironment(options: {
 	permission?: () => Promise<PermissionResponse>;
 	reducedMotion?: boolean;
 	angle?: number;
+	legacyReducedMotionListener?: boolean;
 } = {}) {
 	const windowListeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
 	const documentListeners = new Map<string, Set<EventListenerOrEventListenerObject>>();
@@ -44,12 +45,23 @@ function createMotionEnvironment(options: {
 
 	const mql = {
 		matches: options.reducedMotion ?? false,
-		addEventListener: vi.fn((_type: string, listener: () => void) => {
-			mqlListeners.add(listener);
-		}),
-		removeEventListener: vi.fn((_type: string, listener: () => void) => {
-			mqlListeners.delete(listener);
-		}),
+		...(options.legacyReducedMotionListener
+			? {
+					addListener: vi.fn((listener: () => void) => {
+						mqlListeners.add(listener);
+					}),
+					removeListener: vi.fn((listener: () => void) => {
+						mqlListeners.delete(listener);
+					}),
+				}
+			: {
+					addEventListener: vi.fn((_type: string, listener: () => void) => {
+						mqlListeners.add(listener);
+					}),
+					removeEventListener: vi.fn((_type: string, listener: () => void) => {
+						mqlListeners.delete(listener);
+					}),
+				}),
 	};
 
 	const motionWindow: MockMotionWindow = {
@@ -388,6 +400,30 @@ describe('DeviceMotion', () => {
 
 		expect(motion.isActive()).toBe(false);
 		expect(callback).toHaveBeenLastCalledWith({ x: 0, y: 0, z: 0 });
+	});
+
+	it('supports legacy reduced-motion media query listeners', async () => {
+		const env = createMotionEnvironment({ legacyReducedMotionListener: true });
+		const callback = vi.fn();
+		const motion = new DeviceMotion(callback, {
+			baselineAlpha: 0,
+			deadZone: 0,
+			warmupMs: 0,
+		});
+
+		await expect(motion.initialize()).resolves.toBe(true);
+		expect(env.mql.addListener).toHaveBeenCalledWith(expect.any(Function));
+
+		now = 10;
+		env.dispatchOrientation(45, 0);
+		env.mql.matches = true;
+		env.dispatchReducedMotionChange();
+
+		expect(motion.isActive()).toBe(false);
+		expect(callback).toHaveBeenLastCalledWith({ x: 0, y: 0, z: 0 });
+
+		motion.cleanup();
+		expect(env.mql.removeListener).toHaveBeenCalledWith(expect.any(Function));
 	});
 
 	it('restarts after reduced motion is disabled when no permission prompt is needed', async () => {

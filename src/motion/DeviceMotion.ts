@@ -47,6 +47,11 @@ interface MotionWindow {
 	};
 }
 
+interface LegacyMediaQueryList {
+	addListener?: (listener: () => void) => void;
+	removeListener?: (listener: () => void) => void;
+}
+
 const DEFAULTS = {
 	oneEuroMinCutoff: 0.5,
 	oneEuroBeta: 0.01,
@@ -105,6 +110,24 @@ export function isDeviceMotionPermissionRequired(): boolean {
 function getScreenOrientationAngle(): number {
 	if (typeof screen === 'undefined') return 0;
 	return screen.orientation?.angle ?? 0;
+}
+
+function addMediaQueryChangeListener(mql: MediaQueryList, listener: () => void): void {
+	if (typeof mql.addEventListener === 'function') {
+		mql.addEventListener('change', listener);
+		return;
+	}
+
+	(mql as LegacyMediaQueryList).addListener?.(listener);
+}
+
+function removeMediaQueryChangeListener(mql: MediaQueryList, listener: () => void): void {
+	if (typeof mql.removeEventListener === 'function') {
+		mql.removeEventListener('change', listener);
+		return;
+	}
+
+	(mql as LegacyMediaQueryList).removeListener?.(listener);
 }
 
 export class DeviceMotion {
@@ -245,7 +268,7 @@ export class DeviceMotion {
 		this.stopListening();
 
 		if (this.reducedMotionMql && this.reducedMotionListener) {
-			this.reducedMotionMql.removeEventListener('change', this.reducedMotionListener);
+			removeMediaQueryChangeListener(this.reducedMotionMql, this.reducedMotionListener);
 		}
 		this.reducedMotionMql = null;
 		this.reducedMotionListener = null;
@@ -295,7 +318,9 @@ export class DeviceMotion {
 				this.startListening();
 			}
 		};
-		this.reducedMotionMql?.addEventListener('change', this.reducedMotionListener);
+		if (this.reducedMotionMql) {
+			addMediaQueryChangeListener(this.reducedMotionMql, this.reducedMotionListener);
+		}
 	}
 
 	private prefersReducedMotion(): boolean {
