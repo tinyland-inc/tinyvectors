@@ -62,6 +62,26 @@ describe('ScrollHandler', () => {
 		expect(requestAnimationFrame).toHaveBeenCalledTimes(2);
 	});
 
+	it('honors caller-configured pull-force caps', () => {
+		const handler = new ScrollHandler({ maxForces: 2 });
+
+		for (let i = 0; i < 5; i++) {
+			vi.setSystemTime(1_000 + i * 16);
+			handler.handleScroll({ deltaY: 240 } as WheelEvent);
+		}
+
+		expect(handler.getPullForces()).toHaveLength(2);
+	});
+
+	it('allows callers to disable retained pull forces', () => {
+		const handler = new ScrollHandler({ maxForces: 0 });
+
+		handler.handleScroll({ deltaY: 240 } as WheelEvent);
+
+		expect(handler.getStickiness()).toBeGreaterThan(0);
+		expect(handler.getPullForces()).toEqual([]);
+	});
+
 	it('cleans up scheduled decay and scroll-end work', () => {
 		const clearTimeoutSpy = vi.spyOn(globalThis, 'clearTimeout');
 		const handler = new ScrollHandler();

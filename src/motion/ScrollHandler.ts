@@ -20,9 +20,13 @@ export class ScrollHandler {
 	private decayFrame: number | null = null;
 	private scrollEndTimer: ReturnType<typeof setTimeout> | null = null;
 	private disposed = false;
+	private maxForces: number | null = null;
 
 	constructor(config?: ScrollHandlerConfig) {
 		if (config?.decayRate) this.decayRate = config.decayRate;
+		if (typeof config?.maxForces === 'number') {
+			this.maxForces = Math.max(0, Math.floor(config.maxForces));
+		}
 	}
 
 	public handleScroll(event: WheelEvent): void {
@@ -110,8 +114,9 @@ export class ScrollHandler {
 				explosive,
 			});
 
-			if (this.pullForces.length > (explosive ? 10 : 8)) {
-				this.pullForces.shift();
+			const maxForces = this.maxForces ?? (explosive ? 10 : 8);
+			if (this.pullForces.length > maxForces) {
+				this.pullForces.splice(0, this.pullForces.length - maxForces);
 			}
 		}
 	}
