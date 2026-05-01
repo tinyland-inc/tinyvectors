@@ -48,6 +48,7 @@ Avoid tests that lock exact coefficients, frame-by-frame positions, or one-off s
 
 1. Keep PR #39 on the restored pre-Phase-A physics and renderer baseline while retaining the motion harness, lifecycle, pointer, package, and CI work.
 2. Add pure field helpers and unit tests without changing runtime feel.
-3. Route existing gravity, pointer, and scroll values through field helpers one input at a time.
-4. Add browser probes for directional bias, pointer locality, and scroll decay.
-5. Revisit renderer stylability after interaction feel is stable.
+3. Route gravity/device-orientation through the field helper while preserving ambient motion.
+4. Route pointer and scroll values through field helpers one input at a time.
+5. Add browser probes for directional bias, pointer locality, and scroll decay.
+6. Revisit renderer stylability after interaction feel is stable.

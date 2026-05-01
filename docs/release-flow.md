@@ -33,7 +33,7 @@ npm publish --dry-run --ignore-scripts --access public ./bazel-bin/pkg
 
 `pnpm run check:bundle-size` measures a realistic tree-shaken consumer import, `import { TinyVectors } from '@tummycrypt/tinyvectors'`, with Svelte externalized as a peer dependency. `//:bundle_size_check` runs the same measurement against the Bazel-built package artifact. The current gate is 12 KiB gzip and the target remains 11 KiB gzip, so the check reports target headroom or overage while leaving a small CI buffer.
 
-The bundle-size check also asserts that internal future-work modules stay out of that consumer bundle. For example, `dist/core/InteractionField.js` is allowed to ship as an internal preserved module, but it must not be pulled into the `{ TinyVectors }` bundle until runtime physics actually imports it.
+The bundle-size check also reports tracked runtime modules that enter that consumer bundle. `dist/core/InteractionField.js` is expected to appear once runtime physics routes an input through the field contract, and the gzip result is the source of truth for whether that cost is acceptable.
 
 `bazel query //...` should also work locally. `.bazelignore` excludes direnv, Nix, package-manager, and build-output directories so Bazel does not walk generated local artifacts.
 

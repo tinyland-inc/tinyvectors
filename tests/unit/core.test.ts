@@ -287,6 +287,25 @@ describe('BlobPhysics', () => {
       expect(rotatedBack[i]).toBeCloseTo(expected[i], 10);
     }
   });
+
+  it('applies device gravity as a bounded directional field', () => {
+    const physics = new BlobPhysics(0);
+    const blob = createTestConvexBlob(50, 50, 20);
+    const applyAccelerometerForces = (
+      physics as unknown as {
+        applyAccelerometerForces(blob: ConvexBlob): void;
+      }
+    ).applyAccelerometerForces.bind(physics);
+
+    physics.setGravity({ x: 3, y: 4 });
+    applyAccelerometerForces(blob);
+
+    const magnitude = Math.sqrt(blob.velocityX * blob.velocityX + blob.velocityY * blob.velocityY);
+    expect(magnitude).toBeCloseTo(0.003);
+    expect(blob.velocityX).toBeGreaterThan(0);
+    expect(blob.velocityY).toBeGreaterThan(0);
+    expect(blob.velocityX / blob.velocityY).toBeCloseTo(3 / 4);
+  });
 });
 
 

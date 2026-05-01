@@ -16,6 +16,7 @@ import type { ConvexBlob, GravityVector, TiltVector } from './types.js';
 import { SpatialHash } from './SpatialHash.js';
 import { GaussianKernel } from './GaussianKernel.js';
 import { SpringSystem, DEFAULT_SPRING_CONFIG, type SpringConfig } from './SpringSystem.js';
+import { directionalBiasField } from './InteractionField.js';
 
 export interface BlobPhysicsConfig {
 	antiClusteringStrength: number;
@@ -473,12 +474,10 @@ export class BlobPhysics {
 	private applyAccelerometerForces(blob: ConvexBlob): void {
 		const accelerometerStrength = 0.0008;
 		const maxForce = 0.003;
+		const gravityField = directionalBiasField(this.gravity, accelerometerStrength, maxForce);
 
-		const gravityX = Math.max(-maxForce, Math.min(maxForce, this.gravity.x * accelerometerStrength));
-		const gravityY = Math.max(-maxForce, Math.min(maxForce, this.gravity.y * accelerometerStrength));
-
-		blob.velocityX += gravityX;
-		blob.velocityY += gravityY;
+		blob.velocityX += gravityField.x;
+		blob.velocityY += gravityField.y;
 
 		
 		if (blob.controlPoints && (Math.abs(this.gravity.x) > 0.3 || Math.abs(this.gravity.y) > 0.3)) {

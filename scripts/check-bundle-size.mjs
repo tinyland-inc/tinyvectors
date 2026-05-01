@@ -11,7 +11,7 @@ const packageRoot = resolve(process.cwd(), process.argv[2] ?? '.');
 const distEntry = resolve(packageRoot, 'dist/index.js');
 const targetGzipKiB = parsePositiveKiB('TINYVECTORS_TARGET_GZIP_KIB', 11);
 const maxGzipKiB = parsePositiveKiB('TINYVECTORS_MAX_GZIP_KIB', 12);
-const forbiddenConsumerModules = ['dist/core/InteractionField.js'];
+const trackedConsumerModules = ['dist/core/InteractionField.js'];
 
 if (maxGzipKiB < targetGzipKiB) {
 	console.error(
@@ -65,19 +65,9 @@ console.log(TinyVectors);
 			chunk.moduleIds.map((moduleId) => moduleId.replaceAll('\\', '/')),
 		),
 	);
-	const forbiddenIncluded = forbiddenConsumerModules.filter((modulePath) =>
+	const trackedIncluded = trackedConsumerModules.filter((modulePath) =>
 		[...includedModules].some((moduleId) => moduleId.endsWith(`/${modulePath}`)),
 	);
-
-	if (forbiddenIncluded.length > 0) {
-		console.error(
-			[
-				'Consumer bundle included internal future-work modules:',
-				...forbiddenIncluded.map((modulePath) => `- ${modulePath}`),
-			].join('\n'),
-		);
-		process.exit(1);
-	}
 
 	const js = outputs
 		.filter((item) => item.type === 'chunk')
@@ -96,6 +86,9 @@ console.log(TinyVectors);
 			targetDelta <= 0
 				? `target headroom ${Math.abs(targetDelta).toFixed(2)} KiB`
 				: `target overage ${targetDelta.toFixed(2)} KiB`,
+			trackedIncluded.length > 0
+				? `tracked modules included: ${trackedIncluded.join(', ')}`
+				: 'tracked modules included: none',
 		].join('\n'),
 	);
 
