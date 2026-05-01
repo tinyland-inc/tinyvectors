@@ -187,7 +187,20 @@ export class DeviceMotion {
 			this.permissionState = 'granted';
 		}
 
-		if (this.permissionState !== 'granted' || this.disposed) {
+		if (this.disposed) {
+			this.stopListening();
+			return false;
+		}
+
+		if (this.prefersReducedMotion()) {
+			this.blockedByReducedMotion = true;
+			this.stopListening();
+			this.resetFilterState();
+			this.emitNeutral();
+			return false;
+		}
+
+		if (this.permissionState !== 'granted') {
 			this.stopListening();
 			return false;
 		}

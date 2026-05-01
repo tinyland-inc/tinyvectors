@@ -239,6 +239,35 @@ describe('DeviceMotion', () => {
 		expect(motion.isActive()).toBe(false);
 	});
 
+	it('does not start listeners when reduced motion is enabled during a permission request', async () => {
+		let resolvePermission: (value: PermissionResponse) => void = () => {};
+		const permission = new Promise<PermissionResponse>((resolve) => {
+			resolvePermission = resolve;
+		});
+		const env = createMotionEnvironment({ permission: () => permission });
+		const callback = vi.fn();
+		const motion = new DeviceMotion(callback);
+
+		const request = motion.requestPermission();
+		env.mql.matches = true;
+		env.dispatchReducedMotionChange();
+		resolvePermission('granted');
+
+		await expect(request).resolves.toBe(false);
+		expect(motion.isActive()).toBe(false);
+		expect(env.addWindowListener).not.toHaveBeenCalled();
+		expect(callback).toHaveBeenLastCalledWith({ x: 0, y: 0, z: 0 });
+
+		env.mql.matches = false;
+		env.dispatchReducedMotionChange();
+
+		expect(motion.getPermissionState()).toBe('granted');
+		expect(motion.isActive()).toBe(true);
+		expect(env.addWindowListener).toHaveBeenCalledWith('deviceorientation', expect.any(Function), {
+			passive: true,
+		});
+	});
+
 	it('calibrates against caller-requested samples', async () => {
 		const env = createMotionEnvironment();
 		const callback = vi.fn();
