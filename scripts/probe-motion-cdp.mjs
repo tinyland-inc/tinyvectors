@@ -313,6 +313,35 @@ try {
 		`,
 	});
 
+	const disabledUrl = `http://${host}:${vitePort}/?controls=true&animated=true&deviceMotion=false&pointerPhysics=false&scrollPhysics=false&blobs=8&listenerProbe=1`;
+	await client.send('Page.navigate', { url: disabledUrl });
+	await delay(1000);
+
+	const disabledInitial = await evaluate(client, `({
+		motionStatus: window.__tinyvectorsDeviceMotionStatus?.() ?? null,
+		pathCount: document.querySelectorAll('path').length,
+		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
+	})`);
+
+	assert(disabledInitial.pathCount > 0, 'TinyVectors did not render when IO features were disabled.');
+	assert(
+		disabledInitial.motionStatus?.enabled === false,
+		'Disabled device motion page reported device motion enabled.',
+	);
+	assert(
+		disabledInitial.motionStatus?.active === false,
+		'Disabled device motion page reported an active listener.',
+	);
+	assert(!disabledInitial.listeners.wheel, 'Wheel listener attached when scroll physics was disabled.');
+	assert(
+		!disabledInitial.listeners.pointermove,
+		'Pointer listener attached when pointer physics was disabled.',
+	);
+	assert(
+		!disabledInitial.listeners.deviceorientation,
+		'Device orientation listener attached when device motion was disabled.',
+	);
+
 	const pageUrl = `http://${host}:${vitePort}/?controls=true&animated=true&deviceMotion=true&pointerPhysics=false&scrollPhysics=false&blobs=8&motionIdleReset=700`;
 	await client.send('Page.navigate', { url: pageUrl });
 	await delay(1500);
@@ -513,6 +542,11 @@ try {
 					hasAccelerometer: initial.hasAccelerometer,
 					motionStatus: initial.motionStatus,
 					pathCount: initial.pathCount,
+				},
+				disabledInitial: {
+					motionStatus: disabledInitial.motionStatus,
+					pathCount: disabledInitial.pathCount,
+					listeners: disabledInitial.listeners,
 				},
 				syntheticOrientation: {
 					status: afterSpoof.status,
