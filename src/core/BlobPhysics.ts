@@ -659,26 +659,28 @@ export class BlobPhysics {
 	private smoothControlPoints(blob: ConvexBlob): void {
 		if (!blob.controlPoints || blob.controlPoints.length < 3) return;
 
-		for (let i = 0; i < blob.controlPoints.length; i++) {
+		const originalRadii = blob.controlPoints.map((point) => point.radius);
+		const pointCount = blob.controlPoints.length;
+
+		for (let i = 0; i < pointCount; i++) {
 			const current = blob.controlPoints[i];
-			const prev = blob.controlPoints[(i - 1 + blob.controlPoints.length) % blob.controlPoints.length];
-			const next = blob.controlPoints[(i + 1) % blob.controlPoints.length];
+			const prevRadius = originalRadii[(i - 1 + pointCount) % pointCount];
+			const currentRadius = originalRadii[i];
+			const nextRadius = originalRadii[(i + 1) % pointCount];
 
 			
-			const avgRadius = (prev.radius + current.radius + next.radius) / 3;
+			const avgRadius = (prevRadius + currentRadius + nextRadius) / 3;
 			const smoothingFactor = 0.05;
-			current.radius = current.radius * (1 - smoothingFactor) + avgRadius * smoothingFactor;
+			current.radius = currentRadius * (1 - smoothingFactor) + avgRadius * smoothingFactor;
 
 			
 			const minRadiusDiff = blob.size * 0.1;
-			if (Math.abs(current.radius - prev.radius) > minRadiusDiff) {
-				const adjustment = (Math.abs(current.radius - prev.radius) - minRadiusDiff) * 0.5;
-				if (current.radius > prev.radius) {
+			if (Math.abs(current.radius - prevRadius) > minRadiusDiff) {
+				const adjustment = (Math.abs(current.radius - prevRadius) - minRadiusDiff) * 0.5;
+				if (current.radius > prevRadius) {
 					current.radius -= adjustment;
-					prev.radius += adjustment;
 				} else {
 					current.radius += adjustment;
-					prev.radius -= adjustment;
 				}
 			}
 		}

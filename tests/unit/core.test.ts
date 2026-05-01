@@ -256,6 +256,37 @@ describe('BlobPhysics', () => {
       useSpatialHash: false,
     });
   });
+
+  it('smooths control points without start-index directional bias', () => {
+    const runSmoothing = (radii: number[]) => {
+      const blob = createTestConvexBlob(50, 50, 20);
+      blob.controlPoints?.forEach((point, index) => {
+        point.radius = radii[index];
+        point.baseRadius = radii[index];
+        point.targetRadius = radii[index];
+      });
+
+      const physics = new BlobPhysics(0);
+      (
+        physics as unknown as {
+          smoothControlPoints(blob: ConvexBlob): void;
+        }
+      ).smoothControlPoints(blob);
+
+      return blob.controlPoints?.map((point) => point.radius) ?? [];
+    };
+
+    const radii = [20, 40, 20, 10, 30, 20, 35, 15];
+    const rotatedRadii = [radii[radii.length - 1], ...radii.slice(0, -1)];
+    const expected = runSmoothing(radii);
+    const rotatedResult = runSmoothing(rotatedRadii);
+    const rotatedBack = [...rotatedResult.slice(1), rotatedResult[0]];
+
+    expect(rotatedBack).toHaveLength(expected.length);
+    for (let i = 0; i < expected.length; i++) {
+      expect(rotatedBack[i]).toBeCloseTo(expected[i], 10);
+    }
+  });
 });
 
 
