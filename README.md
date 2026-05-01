@@ -101,7 +101,7 @@ Useful extra commands:
 - `pnpm dev` runs the local Vite demo app
 - `pnpm dev:watch` rebuilds the library on change
 - `pnpm test:pbt` runs the property-based invariants only
-- `pnpm test:browser:motion` launches a headless Chrome/CDP probe for synthetic orientation, CDP orientation, and CDP accelerometer input
+- `pnpm test:browser:motion` launches a headless Chrome/CDP probe for synthetic orientation, CDP orientation, reduced-motion listener lifecycle, and CDP accelerometer input
 - `pnpm check:release-metadata` verifies `package.json`, `BUILD.bazel`, and `MODULE.bazel` stay aligned
 - `pnpm check:package` runs `publint`
 - `pnpm check:bundle-size` measures the tree-shaken `{ TinyVectors }` consumer bundle with Svelte externalized
@@ -115,7 +115,7 @@ The dev app includes a browser/device harness for interaction work:
 - Use the panel toggles to isolate pointer, scroll, and device-motion physics.
 - Use `Spoof Tilt` and `Neutral Tilt` to verify TinyVectors motion wiring without relying on browser sensor tooling.
 - On a phone or tablet, open the dev URL, tap `Request Motion`, keep the device still, tap `Calibrate`, then tilt the device.
-- In desktop Chrome DevTools, use the Sensors panel to emulate orientation changes and watch the motion `x/y/z` status line. The browser probe also exercises Chrome's CDP accelerometer override path.
+- In desktop Chrome DevTools, use the Sensors panel to emulate orientation changes and watch the motion `x/y/z` status line. The browser probe also exercises Chrome's CDP reduced-motion media emulation and accelerometer override paths.
 
 ## Release Truth
 
