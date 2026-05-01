@@ -192,6 +192,16 @@ function assert(condition, message) {
 	}
 }
 
+function parseMotionStatus(status) {
+	const match = /^motion x (-?\d+(?:\.\d+)?) y (-?\d+(?:\.\d+)?) z (-?\d+(?:\.\d+)?)$/.exec(status ?? '');
+	if (!match) return null;
+	return {
+		x: Number(match[1]),
+		y: Number(match[2]),
+		z: Number(match[3]),
+	};
+}
+
 let chromeProfile;
 let client;
 
@@ -391,6 +401,12 @@ try {
 	);
 	assert(afterSpoof.events.length > initial.events.length, 'Synthetic orientation was not observed.');
 	assert(afterSpoof.firstPath !== initial.firstPath, 'Synthetic orientation did not change blob geometry.');
+	const syntheticMotion = parseMotionStatus(afterSpoof.status);
+	assert(syntheticMotion, `Synthetic orientation status was not parseable: ${afterSpoof.status}`);
+	assert(
+		syntheticMotion.x < 0 && syntheticMotion.y > 0,
+		`Synthetic orientation did not preserve expected direction; got ${afterSpoof.status}`,
+	);
 
 	await delay(550);
 	const afterIdleReset = await evaluate(client, `({
@@ -466,6 +482,15 @@ try {
 	assert(
 		afterCdpOrientation.firstPath !== afterSpoof.firstPath,
 		'CDP device orientation override did not change blob geometry.',
+	);
+	const cdpOrientationMotion = parseMotionStatus(afterCdpOrientation.status);
+	assert(
+		cdpOrientationMotion,
+		`CDP orientation status was not parseable: ${afterCdpOrientation.status}`,
+	);
+	assert(
+		cdpOrientationMotion.x < 0 && cdpOrientationMotion.y > 0,
+		`CDP orientation did not preserve expected direction; got ${afterCdpOrientation.status}`,
 	);
 
 	const listenerProbeUrl = `http://${host}:${vitePort}/?controls=true&animated=true&deviceMotion=true&pointerPhysics=true&scrollPhysics=true&blobs=8&listenerProbe=1`;
@@ -602,6 +627,7 @@ try {
 				},
 				syntheticOrientation: {
 					status: afterSpoof.status,
+					motion: syntheticMotion,
 					events: afterSpoof.events.length,
 					pathChanged: afterSpoof.firstPath !== initial.firstPath,
 					idleResetStatus: afterIdleReset.status,
@@ -615,6 +641,7 @@ try {
 				},
 				cdpOrientation: {
 					status: afterCdpOrientation.status,
+					motion: cdpOrientationMotion,
 					events: afterCdpOrientation.events.length,
 					pathChanged: afterCdpOrientation.firstPath !== afterSpoof.firstPath,
 					lastEvent: afterCdpOrientation.events.at(-1),

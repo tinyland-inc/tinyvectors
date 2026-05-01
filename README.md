@@ -101,7 +101,7 @@ Useful extra commands:
 - `pnpm dev` runs the local Vite demo app
 - `pnpm dev:watch` rebuilds the library on change
 - `pnpm test:pbt` runs the property-based invariants only
-- `pnpm test:browser:motion` launches a headless Chrome/CDP probe for synthetic orientation, CDP orientation, reduced-motion listener lifecycle, and CDP accelerometer input
+- `pnpm test:browser:motion` launches a headless Chrome/CDP probe for synthetic orientation, CDP orientation, directional motion signs, reduced-motion listener lifecycle, and CDP accelerometer input
 - `pnpm check:release-metadata` verifies `package.json`, `BUILD.bazel`, and `MODULE.bazel` stay aligned
 - `pnpm check:package` runs `publint`
 - `pnpm check:bundle-size` measures the tree-shaken `{ TinyVectors }` consumer bundle with Svelte externalized
