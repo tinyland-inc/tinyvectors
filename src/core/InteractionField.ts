@@ -46,13 +46,19 @@ export function directionalBiasField(
 	strength: number,
 	maxMagnitude = 1,
 ): FieldVector {
-	return clampFieldVector(
-		{
-			x: input.x * strength,
-			y: input.y * strength,
-		},
-		maxMagnitude,
-	);
+	const max = Math.max(0, maxMagnitude);
+	const x = input.x * strength;
+	const y = input.y * strength;
+	const currentMagnitude = Math.sqrt(x * x + y * y);
+
+	if (max === 0 || currentMagnitude === 0) return { x: 0, y: 0 };
+	if (currentMagnitude <= max) return { x, y };
+
+	const scale = max / currentMagnitude;
+	return {
+		x: x * scale,
+		y: y * scale,
+	};
 }
 
 export function smoothDistanceFalloff(distance: number, radius: number): number {
