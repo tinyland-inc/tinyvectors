@@ -138,12 +138,13 @@ npm_package(
     srcs = [
         "package.json",
         "README.md",
+        "CHANGELOG.md",
         "LICENSE",
         "src/themes/vector-colors.css",
         ":tinyvectors",
     ],
     package = "@tummycrypt/tinyvectors",
-    version = "0.2.5",
+    version = "0.3.0",
     visibility = ["//visibility:public"],
 )
 
