@@ -60,8 +60,6 @@ export class BlobPhysics {
 	private mouseY = 50;
 	private mouseVelX = 0;
 	private mouseVelY = 0;
-	private lastMouseX = 50;
-	private lastMouseY = 50;
 
 	
 	private gravity: GravityVector = { x: 0, y: 0 };
@@ -214,8 +212,6 @@ export class BlobPhysics {
 		const previousMouseY = this.mouseY;
 		this.mouseVelX = x - previousMouseX;
 		this.mouseVelY = y - previousMouseY;
-		this.lastMouseX = previousMouseX;
-		this.lastMouseY = previousMouseY;
 		this.mouseX = x;
 		this.mouseY = y;
 	}
@@ -457,6 +453,9 @@ export class BlobPhysics {
 		
 		this.applyAccelerometerForces(blob);
 
+
+		this.applyPointerField(blob);
+
 		
 		this.updateMovementWithAccelerometer(blob, time);
 
@@ -492,6 +491,20 @@ export class BlobPhysics {
 			const deformationAmount = Math.min(0.08, (Math.abs(this.gravity.x) + Math.abs(this.gravity.y)) * 0.02);
 			blob.chaosLevel = Math.min((blob.chaosLevel || 0) + deformationAmount, 0.2);
 		}
+	}
+
+	private applyPointerField(blob: ConvexBlob): void {
+		if (this.mouseX === 50 && this.mouseY === 50) return;
+
+		const dx = this.mouseX - blob.currentX;
+		const dy = this.mouseY - blob.currentY;
+		const distance = Math.sqrt(dx * dx + dy * dy);
+		if (distance === 0 || distance >= 34) return;
+
+		const normalized = 1 - distance / 34;
+		const scale = (normalized * normalized * 0.0014) / distance;
+		blob.velocityX += dx * scale;
+		blob.velocityY += dy * scale;
 	}
 
 	private updateMovementWithAccelerometer(blob: ConvexBlob, time: number): void {

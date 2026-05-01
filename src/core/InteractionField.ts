@@ -78,9 +78,10 @@ export function pointAttractorField({
 	const dx = target.x - origin.x;
 	const dy = target.y - origin.y;
 	const distance = Math.sqrt(dx * dx + dy * dy);
-	if (distance === 0) return { x: 0, y: 0 };
+	if (distance === 0 || radius <= 0 || distance >= radius) return { x: 0, y: 0 };
 
-	const falloff = smoothDistanceFalloff(distance, radius);
+	const normalized = 1 - distance / radius;
+	const falloff = normalized * normalized;
 	const scale = (falloff * strength) / distance;
 	return {
 		x: dx * scale,
