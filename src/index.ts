@@ -79,6 +79,7 @@ export type {
 	PhysicsRange,
 	PointerBounds,
 	PointerCapabilityEnvironment,
+	PointerCancelEventName,
 	PointerExitEventName,
 	PointerExitLikeEvent,
 	PointerLifecycleEventName,

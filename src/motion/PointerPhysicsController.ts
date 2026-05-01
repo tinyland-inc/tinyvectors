@@ -7,7 +7,12 @@ import {
 
 export type PointerMoveEventName = 'pointermove' | 'mousemove';
 export type PointerExitEventName = 'pointerout' | 'mouseout';
-export type PointerLifecycleEventName = PointerMoveEventName | PointerExitEventName | 'blur';
+export type PointerCancelEventName = 'pointercancel';
+export type PointerLifecycleEventName =
+	| PointerMoveEventName
+	| PointerExitEventName
+	| PointerCancelEventName
+	| 'blur';
 
 export interface PointerPhysicsEventTarget {
 	addEventListener(
@@ -50,6 +55,7 @@ export interface PointerCapabilityEnvironment {
 export interface PointerPhysicsController {
 	readonly eventName: PointerMoveEventName;
 	readonly exitEventName: PointerExitEventName;
+	readonly cancelEventName: PointerCancelEventName | null;
 	flush(): void;
 	dispose(): void;
 }
@@ -83,6 +89,9 @@ export function createPointerPhysicsController(
 		options.supportsPointerEvents ?? typeof PointerEvent !== 'undefined';
 	const eventName: PointerMoveEventName = supportsPointerEvents ? 'pointermove' : 'mousemove';
 	const exitEventName: PointerExitEventName = supportsPointerEvents ? 'pointerout' : 'mouseout';
+	const cancelEventName: PointerCancelEventName | null = supportsPointerEvents
+		? 'pointercancel'
+		: null;
 
 	let frame: number | null = null;
 	let pendingPosition: PhysicsPoint | null = null;
@@ -135,17 +144,24 @@ export function createPointerPhysicsController(
 
 	options.target.addEventListener(eventName, handleMove, { passive: true });
 	options.target.addEventListener(exitEventName, handleExit, { passive: true });
+	if (cancelEventName) {
+		options.target.addEventListener(cancelEventName, handleBlur);
+	}
 	options.target.addEventListener('blur', handleBlur);
 
 	return {
 		eventName,
 		exitEventName,
+		cancelEventName,
 		flush,
 		dispose() {
 			if (disposed) return;
 			disposed = true;
 			options.target.removeEventListener(eventName, handleMove);
 			options.target.removeEventListener(exitEventName, handleExit);
+			if (cancelEventName) {
+				options.target.removeEventListener(cancelEventName, handleBlur);
+			}
 			options.target.removeEventListener('blur', handleBlur);
 			if (frame !== null) {
 				cancelFrame(frame);

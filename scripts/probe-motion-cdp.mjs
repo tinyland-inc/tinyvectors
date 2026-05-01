@@ -338,6 +338,10 @@ try {
 		'Pointer listener attached when pointer physics was disabled.',
 	);
 	assert(
+		!disabledInitial.listeners.pointercancel,
+		'Pointer cancel listener attached when pointer physics was disabled.',
+	);
+	assert(
 		!disabledInitial.listeners.deviceorientation,
 		'Device orientation listener attached when device motion was disabled.',
 	);
@@ -451,6 +455,10 @@ try {
 		`Expected one pointerout listener, got ${listenerInitial.listeners.pointerout}.`,
 	);
 	assert(
+		listenerInitial.listeners.pointercancel === 1,
+		`Expected one pointercancel listener, got ${listenerInitial.listeners.pointercancel}.`,
+	);
+	assert(
 		listenerInitial.listeners.blur === 1,
 		`Expected one blur listener, got ${listenerInitial.listeners.blur}.`,
 	);
@@ -479,6 +487,7 @@ try {
 	})`);
 	assert(!afterPointerOff.listeners.pointermove, 'Pointer listener leaked after disabling pointer physics.');
 	assert(!afterPointerOff.listeners.pointerout, 'Pointer exit listener leaked after disabling pointer physics.');
+	assert(!afterPointerOff.listeners.pointercancel, 'Pointer cancel listener leaked after disabling pointer physics.');
 	assert(!afterPointerOff.listeners.blur, 'Pointer blur listener leaked after disabling pointer physics.');
 
 	await client.send('Runtime.evaluate', {

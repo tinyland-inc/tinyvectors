@@ -20,7 +20,7 @@ Every input should become a small field sampled by the blob physics loop:
 - Pointer field: local soft influence around the pointer. Nearby blobs should react more than distant blobs.
 - Scroll field: transient impulse or stickiness that decays. It should not create permanent acceleration.
 - Wall field: bounds should keep the background composed without hard visual snaps.
-- Input liveness: real sensor and pointer IO should auto-enable only when available. If device-orientation events go quiet, the tab is hidden, the pointer leaves the viewport, or the window blurs, the field must return to neutral instead of preserving stale input.
+- Input liveness: real sensor and pointer IO should auto-enable only when available. If device-orientation events go quiet, the tab is hidden, pointer input is canceled, the pointer leaves the viewport, or the window blurs, the field must return to neutral instead of preserving stale input.
 
 Fields may combine, but input fields must not erase the ambient field. If a field makes the background look frozen, jittery, or overly coherent, it violates the contract.
 

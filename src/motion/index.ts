@@ -20,6 +20,7 @@ export {
 	detectPointerPhysicsCapability,
 	getLatestPointerEvent,
 	type PointerCapabilityEnvironment,
+	type PointerCancelEventName,
 	type PointerExitEventName,
 	type PointerExitLikeEvent,
 	type PointerLifecycleEventName,

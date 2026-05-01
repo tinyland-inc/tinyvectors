@@ -105,6 +105,7 @@ describe('createPointerPhysicsController', () => {
 
 		expect(controller.eventName).toBe('pointermove');
 		expect(controller.exitEventName).toBe('pointerout');
+		expect(controller.cancelEventName).toBe('pointercancel');
 		expect(target.addEventListener).toHaveBeenCalledWith(
 			'pointermove',
 			expect.any(Function),
@@ -115,6 +116,7 @@ describe('createPointerPhysicsController', () => {
 			expect.any(Function),
 			{ passive: true },
 		);
+		expect(target.addEventListener).toHaveBeenCalledWith('pointercancel', expect.any(Function));
 		expect(target.addEventListener).toHaveBeenCalledWith('blur', expect.any(Function));
 
 		controller.dispose();
@@ -133,6 +135,7 @@ describe('createPointerPhysicsController', () => {
 
 		expect(controller.eventName).toBe('mousemove');
 		expect(controller.exitEventName).toBe('mouseout');
+		expect(controller.cancelEventName).toBeNull();
 		expect(target.addEventListener).toHaveBeenCalledWith(
 			'mousemove',
 			expect.any(Function),
@@ -231,6 +234,27 @@ describe('createPointerPhysicsController', () => {
 		expect(controller.exitEventName).toBe('pointerout');
 	});
 
+	it('resets stale pointer position when browser pointer IO is canceled', () => {
+		const target = createTarget();
+		const cancelFrame = vi.fn();
+		const updatePosition = vi.fn();
+		createPointerPhysicsController({
+			target,
+			getBounds: () => bounds,
+			range: { min: -1, max: 1 },
+			supportsPointerEvents: true,
+			requestFrame: vi.fn(() => 42),
+			cancelFrame,
+			updatePosition,
+		});
+
+		target.dispatch('pointermove', { clientX: 110, clientY: 70 });
+		target.dispatch('pointercancel');
+
+		expect(cancelFrame).toHaveBeenCalledWith(42);
+		expect(updatePosition).toHaveBeenCalledWith({ x: 0, y: 0 });
+	});
+
 	it('ignores pointerout transitions that stay inside the document', () => {
 		const target = createTarget();
 		const updatePosition = vi.fn();
@@ -291,6 +315,7 @@ describe('createPointerPhysicsController', () => {
 		expect(cancelFrame).toHaveBeenCalledWith(42);
 		expect(target.removeEventListener).toHaveBeenCalledWith('pointermove', expect.any(Function));
 		expect(target.removeEventListener).toHaveBeenCalledWith('pointerout', expect.any(Function));
+		expect(target.removeEventListener).toHaveBeenCalledWith('pointercancel', expect.any(Function));
 		expect(target.removeEventListener).toHaveBeenCalledWith('blur', expect.any(Function));
 		expect(updatePosition).not.toHaveBeenCalled();
 	});

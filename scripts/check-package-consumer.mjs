@@ -83,6 +83,7 @@ import {
 \tmapClientPointToPhysics,
 \ttype MotionVector,
 \ttype PointerBounds,
+\ttype PointerCancelEventName,
 } from '@tummycrypt/tinyvectors/motion';
 import { getThemePreset } from '@tummycrypt/tinyvectors/themes';
 import {
@@ -94,6 +95,7 @@ import {
 import type { ComponentProps } from 'svelte';
 
 const bounds: PointerBounds = { left: 0, top: 0, width: 100, height: 100 };
+const cancelEvent: PointerCancelEventName = 'pointercancel';
 const point = mapClientPointToPhysics(50, 50, bounds);
 const sample: MotionVector = { x: 0, y: 0, z: 1 };
 const props: ComponentProps<typeof TinyVectors> = { theme: 'tinyland', enableDeviceMotion: true };
@@ -108,7 +110,7 @@ const motionStatus: TinyVectorsDeviceMotionStatus = {
 const blobProps: BlobSVGProps = { blobs: [] };
 const themeName: ThemePresetName = 'tinyland';
 const themePreset: ThemePreset = THEME_PRESETS[themeName];
-const names = [BlobPhysics, DeviceMotion, TinyVectors, BlobSVG, ScrollHandler, createPointerPhysicsController, THEME_PRESETS, getThemePreset, point, sample, explicitProps, motionStatus, blobProps, themePreset];
+const names = [BlobPhysics, DeviceMotion, TinyVectors, BlobSVG, ScrollHandler, createPointerPhysicsController, THEME_PRESETS, getThemePreset, point, sample, explicitProps, motionStatus, blobProps, themePreset, cancelEvent];
 console.log(names.length);
 `.trimStart(),
 	);
