@@ -67,19 +67,22 @@
     "**/*.css"
   ],
   "scripts": {
-    "build": "vite build && tsc -p tsconfig.declarations.json",
+    "build": "vite build && node scripts/build-declarations.mjs",
     "dev": "vite --config vite.dev.config.ts",
     "dev:watch": "vite build --watch",
     "check": "svelte-check --tsconfig ./tsconfig.json",
     "check:release-metadata": "node scripts/check-release-metadata.mjs",
     "check:package": "publint",
+    "check:bundle-size": "node scripts/check-bundle-size.mjs",
+    "check:package-consumer": "node scripts/check-package-consumer.mjs ./bazel-bin/pkg",
     "test": "vitest run",
+    "test:browser:motion": "node scripts/probe-motion-cdp.mjs",
     "test:watch": "vitest",
     "test:pbt": "vitest run --testNamePattern='INVARIANT'",
-    "prepublishOnly": "pnpm run check:release-metadata && pnpm run build && pnpm run check:package"
+    "prepublishOnly": "pnpm run check:release-metadata && pnpm run build && pnpm run check:package && pnpm run check:bundle-size"
   },
   "peerDependencies": {
-    "svelte": "^5.0.0"
+    "svelte": ">=5.20.0"
   },
   "devDependencies": {
     "@sveltejs/package": "^2.5.7",

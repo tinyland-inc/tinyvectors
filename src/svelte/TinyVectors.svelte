@@ -2,12 +2,24 @@
 	import { browser } from '../core/browser.js';
 	import { untrack } from 'svelte';
 	import { BlobPhysics, type BlobPhysicsConfig } from '../core/BlobPhysics.js';
-	import { DeviceMotion } from '../motion/DeviceMotion.js';
+	import {
+		DeviceMotion,
+		getDeviceMotionCapabilityState,
+		isDeviceMotionPermissionRequired,
+		type MotionVector,
+	} from '../motion/DeviceMotion.js';
+	import {
+		createPointerPhysicsController,
+		detectPointerPhysicsCapability,
+		type PointerPhysicsController,
+	} from '../motion/PointerPhysicsController.js';
+	import type { PointerBounds } from '../motion/PointerMapper.js';
 	import { ScrollHandler } from '../motion/ScrollHandler.js';
-	import { THEME_PRESETS, type ThemePresetName } from '../core/schema.js';
+	import { THEME_PRESET_COLORS } from '../core/theme-colors.js';
+	import type { ThemePresetName } from '../core/theme-presets.js';
+	import type { TinyVectorsDeviceMotionStatus } from './types.js';
 	import BlobSVG from './BlobSVG.svelte';
 
-	// Props
 	interface Props {
 		/** Theme preset name */
 		theme?: ThemePresetName;
@@ -23,10 +35,20 @@
 		blobCount?: number;
 		/** Physics configuration */
 		physicsConfig?: Partial<BlobPhysicsConfig>;
-		/** Enable device motion (accelerometer) */
+		/** Enable device orientation based motion */
 		enableDeviceMotion?: boolean;
 		/** Enable scroll physics */
 		enableScrollPhysics?: boolean;
+		/** Enable pointer/mouse physics */
+		enablePointerPhysics?: boolean;
+		/** Scales normalized screen-aligned tilt vectors before applying them to physics. */
+		deviceMotionStrength?: number;
+		/** Samples used by calibrateDeviceMotion() when no explicit count is supplied. */
+		deviceMotionCalibrationSamples?: number;
+		/** Milliseconds before paused device-orientation IO resets to neutral. */
+		deviceMotionIdleResetMs?: number;
+		/** Optional diagnostics hook for browser/dev harnesses. */
+		onDeviceMotion?: (motionData: MotionVector) => void;
 	}
 
 	let {
@@ -39,101 +61,79 @@
 		physicsConfig = {},
 		enableDeviceMotion = true,
 		enableScrollPhysics = true,
+		enablePointerPhysics = true,
+		deviceMotionStrength = 0.8,
+		deviceMotionCalibrationSamples = 8,
+		deviceMotionIdleResetMs = 2000,
+		onDeviceMotion,
 	}: Props = $props();
 
-	// State - use regular variables for non-reactive state
+	let containerElement: HTMLDivElement | undefined = $state(undefined);
 	let blobs = $state<ReturnType<BlobPhysics['getBlobs']>>([]);
 	let isReady = $state(false);
-	let isMobileDevice = $state(false);
-	let hasAccelerometerAccess = $state(false);
 
-	// Internal handles that are passed into child components need to stay reactive.
 	let physics = $state<BlobPhysics | null>(null);
 	let animationFrame: number | null = null;
 	let lastTime = 0;
 	let deviceMotion: DeviceMotion | null = null;
 	let scrollHandler: ScrollHandler | null = null;
-	let gravityX = 0;
-	let gravityY = 0;
-	let tiltX = 0;
-	let tiltY = 0;
-	let tiltZ = 0;
+	let pointerController: PointerPhysicsController | null = null;
 
-	// Get theme colors - use $derived.by for computed values
 	const themeColors = $derived.by(() => {
 		if (colors.length > 0) return colors;
-		const preset = THEME_PRESETS[theme];
-		if (!preset || !preset.hasVectors) return [];
-		return preset.colors.map((c) => c.color);
+		return THEME_PRESET_COLORS[theme] ?? [];
 	});
 
-	// Default physics config
-	const defaultPhysicsConfig: BlobPhysicsConfig = {
-		antiClusteringStrength: 0.15,
-		bounceDamping: 0.7,
-		deformationSpeed: 0.5,
-		territoryStrength: 0.1,
-		viscosity: 0.3,
-		useSpatialHash: true,
-		useGaussianSmoothing: true,
-		useSpringSystem: true,
-		springConfig: {},
+	const detectDeviceMotionCapability = (): boolean => {
+		return browser && getDeviceMotionCapabilityState() === 'unknown';
 	};
 
-	// Detect mobile device
-	const detectMobileDevice = (): boolean => {
-		if (!browser) return false;
-		const userAgent = navigator.userAgent.toLowerCase();
-		const mobileKeywords = ['mobile', 'android', 'iphone', 'ipad', 'ipod', 'blackberry', 'windows phone'];
-		const isMobileUserAgent = mobileKeywords.some((keyword) => userAgent.includes(keyword));
-		const isMobileScreen = window.innerWidth <= 768 || window.innerHeight <= 768;
-		const hasTouchScreen = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-		const hasOrientationAPI = 'DeviceOrientationEvent' in window;
-		return (isMobileUserAgent || (isMobileScreen && hasTouchScreen)) && hasOrientationAPI;
+	const createDeviceMotion = (): DeviceMotion =>
+		new DeviceMotion(handleDeviceMotion, {
+			calibrationSamples: deviceMotionCalibrationSamples,
+			deadZone: 0.015,
+			idleResetMs: deviceMotionIdleResetMs,
+		});
+
+	const handleDeviceMotion = (motionData: MotionVector) => {
+		if (!physics) return;
+
+		onDeviceMotion?.(motionData);
+
+		// DeviceMotion emits screen-aligned tilt, so no old beta/gamma axis swap.
+		physics.setGravity({
+			x: motionData.x * deviceMotionStrength,
+			y: motionData.y * deviceMotionStrength,
+		});
+		physics.setTilt(motionData);
 	};
 
-	// DeviceMotion now emits already-filtered, axis-remapped, screen-aligned
-	// tilt vectors in [-1, 1] (One-Euro internally, slow baseline subtraction,
-	// face-down suppression, screen.orientation remap). Pass through directly
-	// — no extra EMA, no axis swap, no negation. The 0.8 magnitude scaler is
-	// preserved so gravity strength matches the previous code's feel at the
-	// physics layer.
-	//
-	// Y-gravity sign note: the previous handler computed gravityY = -beta,
-	// which made forward-tilt drive gravity UP the screen (away from the
-	// viewer). That was counter-intuitive — forward tilt should pull stuff
-	// toward the viewer (positive screen-Y, downward). TiltSource emits
-	// screen-aligned values directly, so we use motionData.y unchanged.
-	// This is the intentional fix that the canonical consumer was working
-	// around by setting enableDeviceMotion={false}.
-	const handleDeviceMotion = (motionData: { x: number; y: number; z: number }) => {
-		if (!hasAccelerometerAccess || !physics) return;
-		tiltX = motionData.x;
-		tiltY = motionData.y;
-		tiltZ = motionData.z;
-		gravityX = motionData.x * 0.8;
-		gravityY = motionData.y * 0.8;
-		physics.setGravity({ x: gravityX, y: gravityY });
-		physics.setTilt({ x: tiltX, y: tiltY, z: tiltZ });
-	};
+	export async function requestDeviceMotionPermission(): Promise<boolean> {
+		if (!browser || !enableDeviceMotion || !physics || !detectDeviceMotionCapability()) return false;
 
-	// Request accelerometer permission
-	const requestAccelerometerPermission = async (): Promise<void> => {
-		if (!isMobileDevice || !deviceMotion) return;
+		deviceMotion ??= createDeviceMotion();
 
-		try {
-			const hasPermission = await deviceMotion.requestPermission();
-			hasAccelerometerAccess = hasPermission;
-			if (hasPermission) {
-				console.log('[TinyVectors] Accelerometer access granted');
-			}
-		} catch (error) {
-			console.log('[TinyVectors] Could not request accelerometer permission:', error);
-			hasAccelerometerAccess = false;
-		}
-	};
+		const hasPermission = await deviceMotion.requestPermission();
+		return hasPermission;
+	}
 
-	// Handle scroll passively — never block native scrolling
+	export function calibrateDeviceMotion(samples?: number): void {
+		deviceMotion?.calibrate(samples);
+	}
+
+	export function getDeviceMotionStatus(): TinyVectorsDeviceMotionStatus {
+		const capabilityState = getDeviceMotionCapabilityState();
+		const permissionState = deviceMotion?.getPermissionState() ?? capabilityState;
+
+		return {
+			enabled: enableDeviceMotion,
+			supported: capabilityState !== 'unsupported' && capabilityState !== 'insecure',
+			requiresPermission: browser && isDeviceMotionPermissionRequired(),
+			permissionState,
+			active: deviceMotion?.isActive() ?? false,
+		};
+	}
+
 	const handleScroll = (event: WheelEvent) => {
 		if (!scrollHandler || !physics) return;
 		scrollHandler.handleScroll(event);
@@ -141,14 +141,32 @@
 		physics.setScrollStickiness(stickiness);
 	};
 
-	// Animation tick function - updates blobs state once per frame
+	const getPointerBounds = (): PointerBounds => {
+		const rect = containerElement?.getBoundingClientRect();
+
+		if (rect && rect.width > 0 && rect.height > 0) {
+			return {
+				left: rect.left,
+				top: rect.top,
+				width: rect.width,
+				height: rect.height,
+			};
+		}
+
+		return {
+			left: 0,
+			top: 0,
+			width: window.innerWidth || 1,
+			height: window.innerHeight || 1,
+		};
+	};
+
 	function tick(currentTime: number) {
 		const dt = Math.min((currentTime - lastTime) / 1000, 0.033);
 		lastTime = currentTime;
 
 		if (physics) {
 			physics.tick(dt, currentTime / 1000);
-			// Update blobs state - this triggers re-render
 			blobs = physics.getBlobs(themeColors);
 		}
 
@@ -168,34 +186,37 @@
 		}
 	}
 
-	// Single initialization effect
 	$effect(() => {
 		if (!browser || !shouldLoad) return;
 
-		// Use untrack to prevent this effect from re-running on state changes
-		untrack(() => {
-			const config = { ...defaultPhysicsConfig, ...physicsConfig };
-			physics = new BlobPhysics(blobCount, config);
+		let disposed = false;
+		const deviceMotionEnabled = enableDeviceMotion;
+		const scrollPhysicsEnabled = enableScrollPhysics;
+		const pointerPhysicsEnabled = enablePointerPhysics;
+		let wheelListenerAttached = false;
 
-			physics.init().then(() => {
-				// Detect mobile
-				isMobileDevice = detectMobileDevice();
+		untrack(() => {
+			// BlobPhysics owns base defaults; this component forwards caller overrides.
+			const currentPhysics = new BlobPhysics(blobCount, physicsConfig);
+			physics = currentPhysics;
+
+			currentPhysics.init().then(() => {
+				if (disposed || physics !== currentPhysics) return;
+
+				const hasDeviceMotionCapability = detectDeviceMotionCapability();
 				isReady = true;
 
-				// Initialize device motion on mobile
-				if (enableDeviceMotion && isMobileDevice) {
-					deviceMotion = new DeviceMotion(handleDeviceMotion);
-					deviceMotion.initialize().then(() => {
-						setTimeout(requestAccelerometerPermission, 1000);
-					});
+				if (deviceMotionEnabled && hasDeviceMotionCapability) {
+					if (!deviceMotion) {
+						deviceMotion = createDeviceMotion();
+						void deviceMotion.initialize();
+					}
 				}
 
-				// Initialize scroll handler
-				if (enableScrollPhysics) {
+				if (scrollPhysicsEnabled) {
 					scrollHandler = new ScrollHandler();
 				}
 
-				// Start animation if enabled
 				if (animated) {
 					startAnimation();
 				} else if (physics) {
@@ -203,24 +224,45 @@
 				}
 			});
 
-			// Set up scroll listener
-			if (enableScrollPhysics) {
+			if (scrollPhysicsEnabled) {
 				window.addEventListener('wheel', handleScroll, { passive: true });
+				wheelListenerAttached = true;
+			}
+
+			if (pointerPhysicsEnabled) {
+				const hasPointerCapability = detectPointerPhysicsCapability(window);
+				if (hasPointerCapability) {
+					pointerController = createPointerPhysicsController({
+						target: window,
+						getBounds: getPointerBounds,
+						supportsPointerEvents: 'PointerEvent' in window,
+						updatePosition(position) {
+							physics?.updateMousePosition(position.x, position.y);
+						},
+					});
+				}
 			}
 		});
 
 		return () => {
+			disposed = true;
 			stopAnimation();
-			if (enableScrollPhysics && browser) {
+			if (wheelListenerAttached) {
 				window.removeEventListener('wheel', handleScroll);
 			}
+			pointerController?.dispose();
+			pointerController = null;
 			deviceMotion?.cleanup();
+			deviceMotion = null;
+			scrollHandler?.dispose();
+			scrollHandler = null;
 			physics?.dispose();
 			physics = null;
+			isReady = false;
+			blobs = [];
 		};
 	});
 
-	// Handle animated prop changes
 	$effect(() => {
 		if (!isReady) return;
 
@@ -234,7 +276,13 @@
 
 {#if shouldLoad && themeColors.length > 0}
 	<div
-		class="absolute inset-0 overflow-hidden pointer-events-none"
+		bind:this={containerElement}
+		style:position="absolute"
+		style:inset="0"
+		style:width="100%"
+		style:height="100%"
+		style:overflow="hidden"
+		style:pointer-events="none"
 		style:opacity
 		style:transition="opacity 0.8s ease-in-out"
 		aria-hidden="true"

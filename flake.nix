@@ -4,12 +4,25 @@
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
     flake-utils.url = "github:numtide/flake-utils";
   };
-  outputs = { self, nixpkgs, flake-utils }:
-    flake-utils.lib.eachDefaultSystem (system:
-      let pkgs = nixpkgs.legacyPackages.${system}; in {
+  outputs =
+    {
+      self,
+      nixpkgs,
+      flake-utils,
+    }:
+    flake-utils.lib.eachDefaultSystem (
+      system:
+      let
+        pkgs = nixpkgs.legacyPackages.${system};
+        bazel = pkgs.writeShellScriptBin "bazel" ''
+          exec ${pkgs.bazelisk}/bin/bazelisk "$@"
+        '';
+      in
+      {
         devShells.default = pkgs.mkShell {
           buildInputs = [
-            pkgs.bazel_8
+            bazel
+            pkgs.bazelisk
             pkgs.nodejs_22
             (pkgs.pnpm_9 or pkgs.pnpm)
           ];
@@ -17,10 +30,10 @@
             echo "tinyvectors dev shell"
             echo "  node $(node --version)"
             echo "  pnpm $(pnpm --version)"
-            echo "  bazel $(bazel --version | head -n1)"
+            echo "  bazel $(cat .bazelversion) via bazelisk"
           '';
         };
-        formatter = pkgs.nixfmt-rfc-style;
+        formatter = pkgs.nixfmt;
       }
     );
 }

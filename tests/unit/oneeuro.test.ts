@@ -50,4 +50,9 @@ describe('OneEuro', () => {
 		expect(() => f.filter(1, 100)).not.toThrow();
 		expect(Number.isFinite(f.filter(2, 100))).toBe(true);
 	});
+
+	it('rejects non-positive cutoff values', () => {
+		expect(() => new OneEuro({ minCutoff: 0, beta: 0, dCutoff: 1 })).toThrow(RangeError);
+		expect(() => new OneEuro({ minCutoff: 1, beta: 0, dCutoff: -1 })).toThrow(RangeError);
+	});
 });
