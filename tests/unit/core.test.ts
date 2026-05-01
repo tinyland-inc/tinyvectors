@@ -306,6 +306,29 @@ describe('BlobPhysics', () => {
     expect(blob.velocityY).toBeGreaterThan(0);
     expect(blob.velocityX / blob.velocityY).toBeCloseTo(3 / 4);
   });
+
+  it('tracks pointer position and velocity without applying standalone pointer force', () => {
+    const physics = new BlobPhysics(0);
+    const blob = createTestConvexBlob(30, 50, 20);
+    const internals = physics as unknown as {
+      mouseX: number;
+      mouseY: number;
+      mouseVelX: number;
+      mouseVelY: number;
+      updateScreensaverPhysics(blob: ConvexBlob, deltaTime: number, time: number): void;
+    };
+
+    physics.updateMousePosition(75, 25);
+
+    expect(internals.mouseX).toBe(75);
+    expect(internals.mouseY).toBe(25);
+    expect(internals.mouseVelX).toBe(25);
+    expect(internals.mouseVelY).toBe(-25);
+
+    internals.updateScreensaverPhysics(blob, 0.016, 0);
+
+    expect(blob.mouseDistance).toBeCloseTo(Math.sqrt((30 - 75) ** 2 + (50 - 25) ** 2));
+  });
 });
 
 
