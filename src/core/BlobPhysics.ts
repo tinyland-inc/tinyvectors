@@ -210,10 +210,12 @@ export class BlobPhysics {
 
 
 	updateMousePosition(x: number, y: number): void {
-		this.mouseVelX = x - this.lastMouseX;
-		this.mouseVelY = y - this.lastMouseY;
-		this.lastMouseX = this.mouseX;
-		this.lastMouseY = this.mouseY;
+		const previousMouseX = this.mouseX;
+		const previousMouseY = this.mouseY;
+		this.mouseVelX = x - previousMouseX;
+		this.mouseVelY = y - previousMouseY;
+		this.lastMouseX = previousMouseX;
+		this.lastMouseY = previousMouseY;
 		this.mouseX = x;
 		this.mouseY = y;
 	}

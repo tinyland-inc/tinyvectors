@@ -342,6 +342,24 @@ describe('BlobPhysics', () => {
 
     expect(blob.mouseDistance).toBeCloseTo(Math.sqrt((30 - 75) ** 2 + (50 - 25) ** 2));
   });
+
+  it('computes pointer velocity from the previous pointer anchor', () => {
+    const physics = new BlobPhysics(0);
+    const internals = physics as unknown as {
+      lastMouseX: number;
+      lastMouseY: number;
+      mouseVelX: number;
+      mouseVelY: number;
+    };
+
+    physics.updateMousePosition(75, 25);
+    physics.updateMousePosition(80, 20);
+
+    expect(internals.mouseVelX).toBe(5);
+    expect(internals.mouseVelY).toBe(-5);
+    expect(internals.lastMouseX).toBe(75);
+    expect(internals.lastMouseY).toBe(25);
+  });
 });
 
 
