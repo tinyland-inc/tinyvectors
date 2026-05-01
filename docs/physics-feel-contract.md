@@ -47,8 +47,8 @@ Avoid tests that lock exact coefficients, frame-by-frame positions, or one-off s
 ## Current Status
 
 - Gravity/device-orientation is routed through `InteractionField.directionalBiasField()` and cached as a bounded force outside the per-blob hot path.
-- The browser probe verifies synthetic and CDP orientation events preserve the expected motion signs, change blob geometry, and return to neutral on idle or reduced motion.
-- Pointer IO updates the physics pointer anchor, velocity, and per-blob `mouseDistance`; the first standalone route applies a small local pointer field only after real pointer input.
+- The browser probe verifies synthetic and CDP orientation events preserve the expected motion signs, change blob geometry, return to neutral on idle or reduced motion, and receive a real CDP pointer move while pointer physics is active.
+- Pointer IO updates the physics pointer anchor, velocity, and per-blob `mouseDistance`; unit coverage verifies the first standalone route applies a small local pointer field only after real pointer input.
 - Scroll still uses the restored pre-Phase-A path and can use the pointer anchor for sticky attraction. Route pointer and scroll through fields only after preserving the current feel and bundle headroom.
 
 ## Implementation Slices
