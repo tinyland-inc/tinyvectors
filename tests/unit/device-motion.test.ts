@@ -342,6 +342,25 @@ describe('DeviceMotion', () => {
 		expect(env.addWindowListener).not.toHaveBeenCalled();
 	});
 
+	it('neutralizes active motion when reduced motion is enabled', async () => {
+		const env = createMotionEnvironment();
+		const callback = vi.fn();
+		const motion = new DeviceMotion(callback, {
+			baselineAlpha: 0,
+			deadZone: 0,
+			warmupMs: 0,
+		});
+
+		await expect(motion.initialize()).resolves.toBe(true);
+		now = 10;
+		env.dispatchOrientation(45, 0);
+		env.mql.matches = true;
+		env.dispatchReducedMotionChange();
+
+		expect(motion.isActive()).toBe(false);
+		expect(callback).toHaveBeenLastCalledWith({ x: 0, y: 0, z: 0 });
+	});
+
 	it('restarts after reduced motion is disabled when no permission prompt is needed', async () => {
 		const env = createMotionEnvironment({ reducedMotion: true });
 		const motion = new DeviceMotion(vi.fn());

@@ -262,6 +262,8 @@ export class DeviceMotion {
 			if (this.reducedMotionMql.matches) {
 				this.blockedByReducedMotion = true;
 				this.stopListening();
+				this.resetFilterState();
+				this.emitNeutral();
 				return;
 			}
 
