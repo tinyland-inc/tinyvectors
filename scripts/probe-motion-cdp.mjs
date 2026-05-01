@@ -403,6 +403,49 @@ try {
 		`Device orientation idle reset did not neutralize motion; status was ${afterIdleReset.status}`,
 	);
 
+	await client.send('Emulation.setEmulatedMedia', {
+		features: [{ name: 'prefers-reduced-motion', value: 'reduce' }],
+	});
+	await delay(350);
+
+	const afterReducedMotion = await evaluate(client, `({
+		motionStatus: window.__tinyvectorsDeviceMotionStatus?.() ?? null,
+		status: document.getElementById('motion-status')?.textContent ?? null,
+		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
+	})`);
+
+	assert(
+		afterReducedMotion.status === 'motion x 0.00 y 0.00 z 0.00',
+		`Reduced motion did not neutralize active motion; status was ${afterReducedMotion.status}`,
+	);
+	assert(
+		afterReducedMotion.motionStatus?.active === false,
+		'Reduced motion did not stop the device orientation listener.',
+	);
+	assert(
+		!afterReducedMotion.listeners.deviceorientation,
+		'Device orientation listener leaked while reduced motion was enabled.',
+	);
+
+	await client.send('Emulation.setEmulatedMedia', {
+		features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }],
+	});
+	await delay(350);
+
+	const afterReducedMotionRestore = await evaluate(client, `({
+		motionStatus: window.__tinyvectorsDeviceMotionStatus?.() ?? null,
+		listeners: window.__tinyvectorsListenerLedger?.snapshot?.() ?? {}
+	})`);
+
+	assert(
+		afterReducedMotionRestore.motionStatus?.active === true,
+		'Device orientation listener did not restart after reduced motion was disabled.',
+	);
+	assert(
+		afterReducedMotionRestore.listeners.deviceorientation === 1,
+		`Expected one deviceorientation listener after reduced motion restore, got ${afterReducedMotionRestore.listeners.deviceorientation}.`,
+	);
+
 	await client.send('DeviceOrientation.setDeviceOrientationOverride', {
 		alpha: 180,
 		beta: 50,
@@ -562,6 +605,13 @@ try {
 					events: afterSpoof.events.length,
 					pathChanged: afterSpoof.firstPath !== initial.firstPath,
 					idleResetStatus: afterIdleReset.status,
+				},
+				reducedMotion: {
+					status: afterReducedMotion.status,
+					activeAfterReduce: afterReducedMotion.motionStatus?.active,
+					listenersAfterReduce: afterReducedMotion.listeners,
+					activeAfterRestore: afterReducedMotionRestore.motionStatus?.active,
+					listenersAfterRestore: afterReducedMotionRestore.listeners,
 				},
 				cdpOrientation: {
 					status: afterCdpOrientation.status,
