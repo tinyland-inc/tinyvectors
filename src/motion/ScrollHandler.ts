@@ -1,5 +1,7 @@
 export interface ScrollHandlerConfig {
+	/** Per-frame decay multiplier for scroll stickiness and velocity. Defaults to 0.92. */
 	decayRate?: number;
+	/** Maximum retained pull-force impulses. Defaults to 8, or 10 for explosive scrolls. Use 0 to keep scroll stickiness without retained pull forces. */
 	maxForces?: number;
 }
 

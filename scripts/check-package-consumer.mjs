@@ -76,6 +76,7 @@ if (missing.length > 0) {
 		join(tempDir, 'consumer-types.ts'),
 		`
 import { BlobPhysics, DeviceMotion, TinyVectors, THEME_PRESETS } from '@tummycrypt/tinyvectors';
+import type { ScrollHandlerConfig as RootScrollHandlerConfig } from '@tummycrypt/tinyvectors';
 import type { ThemePreset, ThemePresetName } from '@tummycrypt/tinyvectors/core';
 import {
 \tScrollHandler,
@@ -84,6 +85,7 @@ import {
 \ttype MotionVector,
 \ttype PointerBounds,
 \ttype PointerCancelEventName,
+\ttype ScrollHandlerConfig,
 } from '@tummycrypt/tinyvectors/motion';
 import { getThemePreset } from '@tummycrypt/tinyvectors/themes';
 import {
@@ -96,6 +98,9 @@ import type { ComponentProps } from 'svelte';
 
 const bounds: PointerBounds = { left: 0, top: 0, width: 100, height: 100 };
 const cancelEvent: PointerCancelEventName = 'pointercancel';
+const scrollConfig: ScrollHandlerConfig = { decayRate: 0.9, maxForces: 2 };
+const rootScrollConfig: RootScrollHandlerConfig = { maxForces: 0 };
+const scrollHandler = new ScrollHandler(scrollConfig);
 const point = mapClientPointToPhysics(50, 50, bounds);
 const sample: MotionVector = { x: 0, y: 0, z: 1 };
 const props: ComponentProps<typeof TinyVectors> = { theme: 'tinyland', enableDeviceMotion: true };
@@ -110,7 +115,7 @@ const motionStatus: TinyVectorsDeviceMotionStatus = {
 const blobProps: BlobSVGProps = { blobs: [] };
 const themeName: ThemePresetName = 'tinyland';
 const themePreset: ThemePreset = THEME_PRESETS[themeName];
-const names = [BlobPhysics, DeviceMotion, TinyVectors, BlobSVG, ScrollHandler, createPointerPhysicsController, THEME_PRESETS, getThemePreset, point, sample, explicitProps, motionStatus, blobProps, themePreset, cancelEvent];
+const names = [BlobPhysics, DeviceMotion, TinyVectors, BlobSVG, ScrollHandler, createPointerPhysicsController, THEME_PRESETS, getThemePreset, scrollHandler, scrollConfig, rootScrollConfig, point, sample, explicitProps, motionStatus, blobProps, themePreset, cancelEvent];
 console.log(names.length);
 `.trimStart(),
 	);
