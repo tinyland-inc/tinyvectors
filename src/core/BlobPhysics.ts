@@ -77,6 +77,7 @@ export class BlobPhysics {
 	private spatialHash: SpatialHash;
 	private gaussianKernel: GaussianKernel;
 	private springSystem: SpringSystem;
+	private controlRadiusScratch: number[] = [];
 
 	constructor(numBlobs: number, config: Partial<BlobPhysicsConfig> = {}) {
 		this.numBlobs = numBlobs;
@@ -663,11 +664,16 @@ export class BlobPhysics {
 	private smoothControlPoints(blob: ConvexBlob): void {
 		if (!blob.controlPoints || blob.controlPoints.length < 3) return;
 
-		const originalRadii = blob.controlPoints.map((point) => point.radius);
-		const pointCount = blob.controlPoints.length;
+		const controlPoints = blob.controlPoints;
+		const originalRadii = this.controlRadiusScratch;
+		const pointCount = controlPoints.length;
 
 		for (let i = 0; i < pointCount; i++) {
-			const current = blob.controlPoints[i];
+			originalRadii[i] = controlPoints[i].radius;
+		}
+
+		for (let i = 0; i < pointCount; i++) {
+			const current = controlPoints[i];
 			const prevRadius = originalRadii[(i - 1 + pointCount) % pointCount];
 			const currentRadius = originalRadii[i];
 			const nextRadius = originalRadii[(i + 1) % pointCount];
@@ -679,13 +685,11 @@ export class BlobPhysics {
 
 			
 			const minRadiusDiff = blob.size * 0.1;
-			if (Math.abs(current.radius - prevRadius) > minRadiusDiff) {
-				const adjustment = (Math.abs(current.radius - prevRadius) - minRadiusDiff) * 0.5;
-				if (current.radius > prevRadius) {
-					current.radius -= adjustment;
-				} else {
-					current.radius += adjustment;
-				}
+			const neighborRadius = (prevRadius + nextRadius) * 0.5;
+			const radiusDiff = current.radius - neighborRadius;
+			const excessRadiusDiff = Math.abs(radiusDiff) - minRadiusDiff;
+			if (excessRadiusDiff > 0) {
+				current.radius -= radiusDiff > 0 ? excessRadiusDiff * 0.5 : -excessRadiusDiff * 0.5;
 			}
 		}
 	}
