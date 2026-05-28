@@ -18,9 +18,11 @@ const expectedPackageCheckCommand = 'pnpm run check:package && pnpm run check:bu
 const expectedPrepublishOnlyCommand =
 	'pnpm run check:release-metadata && pnpm run build && pnpm run check:package && pnpm run check:bundle-size';
 const expectedSharedWorkflowInputs = {
-	runner_mode: 'hosted',
+	runner_mode: 'repo_owned',
+	runner_labels_json: '${{ vars.PRIMARY_LINUX_RUNNER_LABELS_JSON }}',
 	workspace_mode: 'isolated',
-	publish_mode: 'same_runner',
+	publish_mode: 'hosted_exception',
+	npm_publish_mode: 'disabled',
 	node_versions: `["${expectedNodeMajor}"]`,
 	publish_node_version: expectedNodeMajor,
 	pnpm_version: expectedPnpmVersion,
@@ -32,6 +34,7 @@ const expectedSharedWorkflowInputs = {
 	bazel_targets: expectedBazelTargets,
 	package_dir: expectedPackageDir,
 	npm_access: 'public',
+	github_package_name: '@tinyland-inc/tinyvectors',
 };
 
 const extract = (source, pattern, label) => {
