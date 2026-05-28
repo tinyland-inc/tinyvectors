@@ -13,11 +13,13 @@ concurrency:
 
 jobs:
   package:
-    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@d202fc07c0f311c2678a551a9bce1b2a867f6ae4
+    uses: tinyland-inc/ci-templates/.github/workflows/js-bazel-package.yml@61cd1338ca9dae8a25985c0a36ff7beb111449be
     with:
-      runner_mode: hosted
+      runner_mode: repo_owned
+      runner_labels_json: ${{ vars.PRIMARY_LINUX_RUNNER_LABELS_JSON }}
       workspace_mode: isolated
-      publish_mode: same_runner
+      publish_mode: hosted_exception
+      npm_publish_mode: disabled
       node_versions: '["22"]'
       publish_node_version: "22"
       pnpm_version: "9.15.9"
@@ -29,5 +31,6 @@ jobs:
       bazel_targets: "//:pkg //:package_consumer_check //:bundle_size_check //:typecheck //:test"
       package_dir: ./bazel-bin/pkg
       npm_access: public
+      github_package_name: "@tinyland-inc/tinyvectors"
       dry_run: true
     secrets: inherit
