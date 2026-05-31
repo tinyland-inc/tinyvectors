@@ -97,6 +97,12 @@ export {
 	generateThemeCSS,
 	isDarkMode,
 	watchDarkMode,
+	getThemePreviewColors,
+	getThemeVectorColors,
+	getThemeCatalogEntry,
+	getThemeCatalog,
+	type PackageThemeName,
+	type ThemeCatalogEntry,
 } from './themes/index.js';
 
 export {
