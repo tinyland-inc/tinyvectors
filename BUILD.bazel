@@ -149,7 +149,7 @@ npm_package(
         ":tinyvectors",
     ],
     package = "@tummycrypt/tinyvectors",
-    version = "0.3.3",
+    version = "0.3.4",
     visibility = ["//visibility:public"],
 )
 

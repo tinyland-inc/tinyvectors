@@ -7,7 +7,7 @@ Usage from external repo:
 
 module(
     name = "tummycrypt_tinyvectors",
-    version = "0.3.3",
+    version = "0.3.4",
     compatibility_level = 1,
 )
 
