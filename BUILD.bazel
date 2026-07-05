@@ -18,7 +18,6 @@ load("@aspect_rules_js//js:defs.bzl", "js_binary", "js_library", "js_run_binary"
 load("@aspect_rules_js//npm:defs.bzl", "npm_package")
 load("@tummycrypt_tinyvectors_npm//:defs.bzl", "npm_link_all_packages")
 load("@tummycrypt_tinyvectors_npm//:svelte-check/package_json.bzl", svelte_check_bin = "bin")
-load("@tummycrypt_tinyvectors_npm//:vite/package_json.bzl", vite_bin = "bin")
 load("@tummycrypt_tinyvectors_npm//:vitest/package_json.bzl", vitest_bin = "bin")
 
 # =============================================================================
@@ -27,7 +26,6 @@ load("@tummycrypt_tinyvectors_npm//:vitest/package_json.bzl", vitest_bin = "bin"
 
 npm_link_all_packages(name = "node_modules")
 
-vite_bin.vite_binary(name = "vite")
 svelte_check_bin.svelte_check_binary(name = "svelte_check")
 
 js_binary(
@@ -38,6 +36,15 @@ js_binary(
         "scripts/copy-svelte-declarations.mjs",
     ],
     entry_point = "scripts/build-declarations.mjs",
+)
+
+js_binary(
+    name = "build_vite",
+    data = [
+        ":node_modules",
+        ":node_modules/vite",
+    ],
+    entry_point = "scripts/build-vite.mjs",
 )
 
 js_binary(
@@ -71,7 +78,10 @@ js_binary(
 
 js_run_binary(
     name = "tinyvectors_build",
-    tool = "//:vite",
+    # build-vite.mjs anchors cwd to the package root (CWD-independent, same as
+    # build-declarations.mjs) so dist/ materializes correctly when this package
+    # builds as an external Bazel module, not just in-repo.
+    tool = "//:build_vite",
     srcs = glob(
         [
             "src/**/*.ts",
@@ -88,11 +98,6 @@ js_run_binary(
         "tsconfig.declarations.json",
         "vite.config.ts",
         ":node_modules",
-    ],
-    args = [
-        "build",
-        "--config",
-        "$(execpath vite.config.ts)",
     ],
     out_dirs = ["dist"],
     visibility = ["//visibility:public"],
@@ -144,7 +149,7 @@ npm_package(
         ":tinyvectors",
     ],
     package = "@tummycrypt/tinyvectors",
-    version = "0.3.2",
+    version = "0.3.3",
     visibility = ["//visibility:public"],
 )
 
