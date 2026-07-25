@@ -6,8 +6,24 @@ This package is what powers the moving background layer on `transscendsurvival.o
 
 ## Install
 
+> **npm channel retired (2026-07-25).** Versions on registry.npmjs.org stop
+> at 0.3.0 and receive no further publishes. Consume this package through the
+> [tinyland-inc/bazel-registry](https://github.com/tinyland-inc/bazel-registry)
+> graph instead — either as a `bazel_dep` (`tummycrypt_tinyvectors`), or by
+> pinning the exact GitHub tag archive the registry's `source.json` names and
+> building `dist/` from source in a `prepare` hook that verifies the archive
+> sha256 against the registry pin (reference implementations:
+> `scripts/build-tinyvectors.mjs` in `Jesssullivan/dsa-woodshed.space` and
+> `Great-Falls-Tool-Bus/greatfallstoolbus.org`).
+
 ```bash
-pnpm add @tummycrypt/tinyvectors
+# Bazel (MODULE.bazel), resolved via the tinyland registry chain:
+bazel_dep(name = "tummycrypt_tinyvectors", version = "0.3.5")
+```
+
+```bash
+# pnpm, pinned to the registry-named tag archive:
+pnpm add @tummycrypt/tinyvectors@https://github.com/tinyland-inc/tinyvectors/archive/refs/tags/v0.3.5.tar.gz
 ```
 
 Peer dependency:

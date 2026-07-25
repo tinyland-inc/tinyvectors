@@ -1,5 +1,10 @@
 # Changelog
 
+> **Distribution note (2026-07-25):** the npm channel is retired. npm
+> publishes stop at 0.3.0; 0.3.1+ ship as git tags + entries in
+> [tinyland-inc/bazel-registry](https://github.com/tinyland-inc/bazel-registry)
+> only. See the README's Install section for the sanctioned consumption paths.
+
 ## 0.3.5 - 2026-07-25
 
 - Fixes hermetic Bazel/RBE builds (TIN-2099): `npm_translate_lock` now sets `lifecycle_hooks = {"esbuild": []}` so rules_js no longer runs esbuild's `node install.js` postinstall as a build action, which failed under strict sandbox/worker strategies (network blocked, platform package absent from inputs). Safe because vite drives esbuild through its JS API, whose bin-path resolution falls back to `require.resolve('@esbuild/<platform>/bin/esbuild')` at runtime, and `pnpm-lock.yaml` pins every `@esbuild/*` platform package.
