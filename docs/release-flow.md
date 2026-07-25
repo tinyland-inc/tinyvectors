@@ -108,15 +108,14 @@ release after it.
    `dry_run: false` and `npm_publish_mode: disabled`: the same validation
    lane as CI against the tagged release candidate. registry.npmjs.org is
    never published to (the template's `publish-npm` job is fully gated off by
-   `npm_publish_mode: disabled`), but note the template's separate
-   `publish-github` job is gated only on `github_package_name` being set and
-   `dry_run: false` — with `github_package_name: "@tinyland-inc/tinyvectors"`
-   configured, tag runs also attempt a GitHub Packages
-   (`npm.pkg.github.com`) publish. v0.3.3/v0.3.4 published there;
-   the v0.3.5 attempt failed (E401), leaving the tag run red. The GitHub
-   Packages channel's disposition (retire by blanking `github_package_name`,
-   or repair auth) is an open operator decision; this doc treats the git tag
-   plus the bazel-registry entry as the only authoritative artifacts.
+   `npm_publish_mode: disabled`). The GitHub Packages channel
+   (`npm.pkg.github.com`, published as `@tinyland-inc/tinyvectors` through
+   v0.3.4; the v0.3.5 attempt failed E401) was retired 2026-07-25 per
+   TIN-3165: `github_package_name` is removed from both workflow callers and
+   `check-release-metadata.mjs` asserts it stays absent, so the template's
+   `publish-github` job can no longer fire. v0.3.3/v0.3.4 on GitHub Packages
+   remain historical artifacts. The git tag plus the bazel-registry entry are
+   the only authoritative artifacts.
 3. **Publish the bazel-registry entry.** Add
    `modules/tummycrypt_tinyvectors/X.Y.Z/` to
    [tinyland-inc/bazel-registry](https://github.com/tinyland-inc/bazel-registry):
