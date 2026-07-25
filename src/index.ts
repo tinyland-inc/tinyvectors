@@ -96,6 +96,7 @@ export {
 	getThemePreset,
 	generateThemeCSS,
 	isDarkMode,
+	resolveDark,
 	watchDarkMode,
 	getThemePreviewColors,
 	getThemeVectorColors,

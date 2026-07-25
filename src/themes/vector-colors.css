@@ -1,5 +1,6 @@
 /* TinyVectors CSS Custom Properties
- * Uses Skeleton's .dark class for theme switching
+ * Dark overrides key off either dark signal: a `.dark` class
+ * (Tailwind-style) or Skeleton v4's data-mode="dark" attribute.
  */
 
 /* Per-blob intensity, registered so calc() in SVG stop-opacity is
@@ -16,6 +17,9 @@
 
 /* Light mode defaults */
 :root {
+	/* Blend seam: layer blend mode matching the active scheme. */
+	--tv-blend: multiply;
+
 	/* === Trans Pride Colors === */
 	/* Primary trans blue - main attractive blob */
 	--vector-trans-blue: rgba(91, 206, 250, 0.60);
@@ -83,12 +87,16 @@
 	--vector-tinyland-cloud: rgba(242, 242, 245, 0.50);
 }
 
-/* Dark mode overrides - support multiple selector patterns */
-/* Skeleton v4 uses [data-theme].dark on html element */
+/* Dark mode overrides - support multiple selector patterns.
+ * Skeleton v4 signals dark via data-mode="dark" on the html element,
+ * not a .dark class; class-based setups still use `.dark`. */
 :root.dark,
 html.dark,
 [data-theme].dark,
-.dark {
+.dark,
+[data-mode='dark'] {
+	--tv-blend: screen;
+
 	/* === Trans Pride Colors (Dark Mode) === */
 	--vector-trans-blue: rgba(91, 206, 250, 0.70);
 	--vector-trans-blue-glow: rgba(125, 215, 252, 0.65);
