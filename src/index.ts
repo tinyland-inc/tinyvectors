@@ -68,6 +68,9 @@ export {
 	detectPointerPhysicsCapability,
 	getLatestPointerEvent,
 	ScrollHandler,
+	prefersReducedMotion,
+	watchReducedMotion,
+	VisibilityGate,
 } from './motion/index.js';
 
 export type {
@@ -90,6 +93,7 @@ export type {
 	PointerPhysicsEventTarget,
 	ScrollHandlerConfig,
 	PullForce,
+	VisibilityGateOptions,
 } from './motion/index.js';
 
 export {

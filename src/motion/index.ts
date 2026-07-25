@@ -31,3 +31,5 @@ export {
 	type PointerPhysicsEventTarget,
 } from './PointerPhysicsController.js';
 export { ScrollHandler, type ScrollHandlerConfig, type PullForce } from './ScrollHandler.js';
+export { prefersReducedMotion, watchReducedMotion } from './reduced-motion.js';
+export { VisibilityGate, type VisibilityGateOptions } from './VisibilityGate.js';

@@ -8,6 +8,7 @@ const moduleBazel = read('../MODULE.bazel');
 const buildBazel = read('../BUILD.bazel');
 const ciWorkflow = read('../.github/workflows/ci.yml');
 const publishWorkflow = read('../.github/workflows/publish.yml');
+const changelog = read('../CHANGELOG.md');
 const expectedPnpmVersion = packageJson.packageManager?.replace(/^pnpm@/, '');
 const expectedNodeMajor = packageJson.engines?.node?.match(/>=\s*(\d+)/)?.[1];
 const expectedBazelTargets =
@@ -42,6 +43,23 @@ const extract = (source, pattern, label) => {
 		throw new Error(`Unable to find ${label}`);
 	}
 	return match[1];
+};
+
+// Tolerates a non-version heading on top (e.g. "## Unreleased") as long as a
+// "## <version>" heading exists somewhere in the file; a missing or malformed
+// changelog reports a tidy mismatch line below instead of throwing (which
+// used to surface as an uncaught-exception stack trace rather than the gate's
+// usual "expected"/"found" failure output). Compares whole heading tokens
+// (not a `\b`-bounded prefix) so e.g. "## 0.3.6-rc.1" never satisfies a
+// "0.3.6" requirement.
+const findChangelogVersionHeadingStatus = (source, version) => {
+	const headingVersions = [...source.matchAll(/^##\s+(\S+)/gm)].map((match) => match[1]);
+
+	if (headingVersions.length === 0) {
+		return 'no "## " heading found in CHANGELOG.md';
+	}
+
+	return headingVersions.includes(version) ? version : `no "## ${version}" heading found`;
 };
 
 const extractWorkflowValue = (source, key, label) => {
@@ -89,6 +107,11 @@ const checks = [
 			'npm_package name',
 		),
 		expected: packageJson.name,
+	},
+	{
+		label: "CHANGELOG.md '## <version>' heading",
+		actual: findChangelogVersionHeadingStatus(changelog, packageJson.version),
+		expected: packageJson.version,
 	},
 	{
 		label: 'MODULE.bazel pnpm version',

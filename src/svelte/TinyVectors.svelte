@@ -15,6 +15,8 @@
 	} from '../motion/PointerPhysicsController.js';
 	import type { PointerBounds } from '../motion/PointerMapper.js';
 	import { ScrollHandler } from '../motion/ScrollHandler.js';
+	import { watchReducedMotion } from '../motion/reduced-motion.js';
+	import { VisibilityGate } from '../motion/VisibilityGate.js';
 	import { THEME_PRESET_COLORS } from '../core/theme-colors.js';
 	import type { ThemePresetName } from '../core/theme-presets.js';
 	import type { TinyVectorsDeviceMotionStatus } from './types.js';
@@ -51,6 +53,8 @@
 		onDeviceMotion?: (motionData: MotionVector) => void;
 		/** Explicit dark override forwarded to BlobSVG; null auto-detects. */
 		isDark?: boolean | null;
+		/** Renders the existing static frame instead of animating when the user has requested reduced motion. */
+		respectReducedMotion?: boolean;
 	}
 
 	let {
@@ -69,11 +73,14 @@
 		deviceMotionIdleResetMs = 2000,
 		onDeviceMotion,
 		isDark = null,
+		respectReducedMotion = true,
 	}: Props = $props();
 
 	let containerElement: HTMLDivElement | undefined = $state(undefined);
 	let blobs = $state<ReturnType<BlobPhysics['getBlobs']>>([]);
 	let isReady = $state(false);
+	let reducedMotionActive = $state(false);
+	let isVisible = $state(true);
 
 	let physics = $state<BlobPhysics | null>(null);
 	let animationFrame: number | null = null;
@@ -86,6 +93,14 @@
 		if (colors.length > 0) return colors;
 		return THEME_PRESET_COLORS[theme] ?? [];
 	});
+
+	// Single source of truth for "should the rAF loop actually be running":
+	// the animated prop, prefers-reduced-motion (unless opted out), page
+	// visibility, and the container's viewport intersection all gate the
+	// same existing static-frame path (animated=false machinery below).
+	const effectiveAnimated = $derived(
+		animated && !(respectReducedMotion && reducedMotionActive) && isVisible
+	);
 
 	const detectDeviceMotionCapability = (): boolean => {
 		return browser && getDeviceMotionCapabilityState() === 'unknown';
@@ -220,7 +235,7 @@
 					scrollHandler = new ScrollHandler();
 				}
 
-				if (animated) {
+				if (effectiveAnimated) {
 					startAnimation();
 				} else if (physics) {
 					blobs = physics.getBlobs(themeColors);
@@ -269,11 +284,59 @@
 	$effect(() => {
 		if (!isReady) return;
 
-		if (animated) {
+		if (effectiveAnimated) {
 			startAnimation();
 		} else {
+			// Seed one fresh static frame before stopping so the frozen frame
+			// always reflects current themeColors, regardless of whether this
+			// is the initial mount (animated=false / reduced-motion at ready
+			// time) or a later transition into the stopped state — the static
+			// path never depends on init-ordering between physics.init() and
+			// this effect.
+			if (physics) {
+				blobs = physics.getBlobs(themeColors);
+			}
 			stopAnimation();
 		}
+	});
+
+	// prefers-reduced-motion: listen for changes and feed the existing
+	// static-frame path above via effectiveAnimated. Independent of the
+	// physics mount effect so toggling respectReducedMotion never tears
+	// down/recreates physics.
+	$effect(() => {
+		if (!browser || !shouldLoad) return;
+
+		const dispose = watchReducedMotion((reduced) => {
+			reducedMotionActive = reduced;
+		});
+
+		return () => {
+			dispose();
+		};
+	});
+
+	// Visibility gating (document.hidden + IntersectionObserver on the
+	// container): pauses the rAF loop via the same effectiveAnimated path
+	// when the tab is hidden or the element scrolls out of view, and
+	// resumes cleanly on return — startAnimation() always resets lastTime,
+	// so the existing dt clamp above prevents a jump on resume. Re-runs only
+	// when containerElement itself changes (mount/teardown of the div), not
+	// on every prop change.
+	$effect(() => {
+		if (!browser) return;
+
+		const element = containerElement;
+		const gate = new VisibilityGate(element, {
+			onChange: (visible) => {
+				isVisible = visible;
+			},
+		});
+		isVisible = gate.isVisible();
+
+		return () => {
+			gate.dispose();
+		};
 	});
 </script>
 

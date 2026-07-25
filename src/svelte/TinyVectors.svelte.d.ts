@@ -35,6 +35,8 @@ export interface TinyVectorsProps {
 	onDeviceMotion?: (motionData: MotionVector) => void;
 	/** Explicit dark override forwarded to BlobSVG; null auto-detects. */
 	isDark?: boolean | null;
+	/** Renders the existing static frame instead of animating when the user has requested reduced motion. */
+	respectReducedMotion?: boolean;
 }
 
 export interface TinyVectorsExports {

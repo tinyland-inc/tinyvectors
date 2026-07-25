@@ -49,11 +49,39 @@ export const DEFAULT_BLOB_PHYSICS_CONFIG: BlobPhysicsConfig = {
 	springConfig: {},
 };
 
+// Fixed simulation quantum. Physics previously integrated directly on the
+// caller-supplied per-frame deltaTime/time, but nothing inside
+// updateScreensaverPhysics actually scaled by deltaTime — velocity adds,
+// damping multipliers (*=0.992), and drift amounts are raw per-invocation
+// constants — so feel and damping implicitly scaled with the caller's frame
+// rate (~2x faster/more-damped at 120Hz, half speed at 30Hz throttling).
+const FIXED_TIMESTEP_SECONDS = 1 / 60;
+// Caps how much simulated time a single tick() call can catch up on (e.g.
+// after a paused/backgrounded tab resumes), so a long real-time gap can't
+// spiral into an unbounded number of substeps in one frame.
+const MAX_PHYSICS_SUBSTEPS = 8;
+
 export class BlobPhysics {
 	private blobs: ConvexBlob[] = [];
 	private config: BlobPhysicsConfig;
 	private numBlobs: number;
 	private initialized = false;
+
+	// Fixed-timestep accumulator state (TIN-853): tick() is still called once
+	// per rendered frame with the real, variable deltaTime, but the actual
+	// simulation always advances in fixed FIXED_TIMESTEP_SECONDS quanta so
+	// feel is refresh-rate-independent. Coefficients throughout this class
+	// are unchanged — only the stepping cadence is new.
+	private accumulatedTime = 0;
+	// Seeded with a random phase offset at construction (restores 0.3.5's
+	// stochastic mount phase): without this, every mount starts the
+	// simulation clock at exactly 0, so the `time % 45 < 0.1` territory
+	// reshuffle in updateTerritorialMovement() fires deterministically at the
+	// same wall-clock offset on every page load instead of the varied timing
+	// the pre-fixed-timestep implementation had. Seeded-RNG tests re-seed
+	// Math.random() immediately before construction, so this draw is still
+	// fully deterministic there.
+	private simulationClock = Math.random() * 45;
 
 	
 	private mouseX = 50;
@@ -112,6 +140,8 @@ export class BlobPhysics {
 	dispose(): void {
 		this.blobs = [];
 		this.initialized = false;
+		this.accumulatedTime = 0;
+		this.simulationClock = 0;
 	}
 
 	
@@ -143,27 +173,54 @@ export class BlobPhysics {
 	
 
 
+	// Public signature unchanged (deltaTime, time in seconds) — accumulates
+	// the caller's variable per-frame deltaTime and steps the simulation in
+	// fixed FIXED_TIMESTEP_SECONDS quanta so a 30/60/120Hz caller produces
+	// the same number of physics steps per unit of real time. The `time`
+	// argument is accepted but ignored: an internally tracked simulation
+	// clock (advanced in the same fixed quanta) replaces it so per-substep
+	// phase math is exactly as refresh-rate-independent as position/velocity.
 	tick(deltaTime: number, time: number): void {
 		if (!this.initialized) return;
 
-		
+		// A single non-finite or negative deltaTime (e.g. a caller passing
+		// NaN from a bad rAF timestamp subtraction) must not permanently wedge
+		// the accumulator: Math.min/Math.max with NaN propagate NaN forever,
+		// freezing physics on every subsequent tick(). Coerce to a safe 0 so
+		// one bad frame is simply a no-op step, not a permanent stall.
+		deltaTime = Number.isFinite(deltaTime) ? Math.max(deltaTime, 0) : 0;
+
+		const maxBacklog = FIXED_TIMESTEP_SECONDS * MAX_PHYSICS_SUBSTEPS;
+		this.accumulatedTime = Math.min(this.accumulatedTime + deltaTime, maxBacklog);
+
+		let substeps = 0;
+		while (this.accumulatedTime >= FIXED_TIMESTEP_SECONDS && substeps < MAX_PHYSICS_SUBSTEPS) {
+			this.simulationClock += FIXED_TIMESTEP_SECONDS;
+			this.step(FIXED_TIMESTEP_SECONDS, this.simulationClock);
+			this.accumulatedTime -= FIXED_TIMESTEP_SECONDS;
+			substeps++;
+		}
+	}
+
+	private step(deltaTime: number, time: number): void {
+
 		if (this.config.useSpatialHash) {
 			this.spatialHash.rebuild(this.blobs);
 		}
 
-		
+
 		if (this.config.useSpatialHash) {
 			this.applyAntiClusteringWithSpatialHash();
 		} else {
 			this.applyEnhancedAntiClustering();
 		}
 
-		
+
 		this.blobs.forEach((blob) =>
 			this.updateScreensaverPhysics(blob, deltaTime, time)
 		);
 
-		
+
 		this.mouseVelX *= 0.96;
 		this.mouseVelY *= 0.96;
 	}
