@@ -2,35 +2,29 @@
 	import { browser } from '../core/browser.js';
 	import type { BlobPhysics } from '../core/BlobPhysics.js';
 	import type { ConvexBlob } from '../core/types.js';
+	import { resolveDark, watchDarkMode } from '../themes/dark-mode.js';
 
 	// Props using Svelte 5 $props() syntax
 	interface Props {
 		blobs?: ConvexBlob[];
 		physics?: BlobPhysics | null;
+		/** Explicit dark override; null auto-detects from the document. */
+		isDark?: boolean | null;
 	}
 
-	let { blobs = [], physics = null }: Props = $props();
+	let { blobs = [], physics = null, isDark = null }: Props = $props();
 
-	// Track dark mode for blend mode switching
-	let isDarkMode = $state(false);
-	let primaryBlend = $derived(isDarkMode ? 'screen' : 'multiply');
+	// Multi-signal dark detection (.dark class, data-mode="dark",
+	// color-scheme) drives blend switching; an explicit isDark prop
+	// overrides detection entirely.
+	let detectedDark = $state(false);
+	let primaryBlend = $derived(resolveDark(isDark, detectedDark) ? 'screen' : 'multiply');
 
-	// Watch for dark mode changes
 	$effect(() => {
-		if (browser) {
-			isDarkMode = document.documentElement.classList.contains('dark');
-
-			const observer = new MutationObserver((mutations) => {
-				for (const mutation of mutations) {
-					if (mutation.attributeName === 'class') {
-						isDarkMode = document.documentElement.classList.contains('dark');
-					}
-				}
+		if (browser && isDark == null) {
+			return watchDarkMode((dark) => {
+				detectedDark = dark;
 			});
-
-			observer.observe(document.documentElement, { attributes: true });
-
-			return () => observer.disconnect();
 		}
 	});
 

@@ -33,6 +33,8 @@ export interface TinyVectorsProps {
 	deviceMotionIdleResetMs?: number;
 	/** Optional diagnostics hook for browser/dev harnesses. */
 	onDeviceMotion?: (motionData: MotionVector) => void;
+	/** Explicit dark override forwarded to BlobSVG; null auto-detects. */
+	isDark?: boolean | null;
 }
 
 export interface TinyVectorsExports {

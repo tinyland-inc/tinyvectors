@@ -5,6 +5,8 @@ import type { ConvexBlob } from '../core/types.js';
 export interface BlobSVGProps {
 	blobs?: ConvexBlob[];
 	physics?: BlobPhysics | null;
+	/** Explicit dark override; null auto-detects from the document. */
+	isDark?: boolean | null;
 }
 
 declare const BlobSVG: Component<BlobSVGProps, {}, ''>;

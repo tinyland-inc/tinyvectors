@@ -49,6 +49,8 @@
 		deviceMotionIdleResetMs?: number;
 		/** Optional diagnostics hook for browser/dev harnesses. */
 		onDeviceMotion?: (motionData: MotionVector) => void;
+		/** Explicit dark override forwarded to BlobSVG; null auto-detects. */
+		isDark?: boolean | null;
 	}
 
 	let {
@@ -66,6 +68,7 @@
 		deviceMotionCalibrationSamples = 8,
 		deviceMotionIdleResetMs = 2000,
 		onDeviceMotion,
+		isDark = null,
 	}: Props = $props();
 
 	let containerElement: HTMLDivElement | undefined = $state(undefined);
@@ -288,6 +291,6 @@
 		aria-hidden="true"
 		role="presentation"
 	>
-		<BlobSVG {blobs} {physics} />
+		<BlobSVG {blobs} {physics} {isDark} />
 	</div>
 {/if}

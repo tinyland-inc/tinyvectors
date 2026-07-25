@@ -124,29 +124,4 @@ export function generateThemeCSS(
 
 
 
-export function isDarkMode(): boolean {
-	if (typeof document === 'undefined') return false;
-	return document.documentElement.classList.contains('dark');
-}
-
-
-
-
-export function watchDarkMode(callback: (isDark: boolean) => void): () => void {
-	if (typeof document === 'undefined') return () => {};
-
-	const observer = new MutationObserver((mutations) => {
-		for (const mutation of mutations) {
-			if (mutation.attributeName === 'class') {
-				callback(document.documentElement.classList.contains('dark'));
-			}
-		}
-	});
-
-	observer.observe(document.documentElement, { attributes: true });
-
-	
-	callback(document.documentElement.classList.contains('dark'));
-
-	return () => observer.disconnect();
-}
+export { isDarkMode, resolveDark, watchDarkMode } from './dark-mode.js';
