@@ -34,7 +34,6 @@ const expectedSharedWorkflowInputs = {
 	bazel_targets: expectedBazelTargets,
 	package_dir: expectedPackageDir,
 	npm_access: 'public',
-	github_package_name: '@tinyland-inc/tinyvectors',
 };
 
 const extract = (source, pattern, label) => {
@@ -146,6 +145,18 @@ for (const [key, expected] of Object.entries(expectedSharedWorkflowInputs)) {
 			expected,
 		},
 	);
+}
+
+// GitHub Packages channel retired 2026-07-25 (TIN-3165); the input must stay absent in both workflows.
+for (const [label, source] of [
+	['CI', ciWorkflow],
+	['publish', publishWorkflow],
+]) {
+	checks.push({
+		label: `${label} github_package_name`,
+		actual: /^\s*github_package_name:/m.test(source) ? 'present' : 'absent',
+		expected: 'absent',
+	});
 }
 
 const failures = checks.filter((check) => check.actual !== check.expected);
