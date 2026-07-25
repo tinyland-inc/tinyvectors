@@ -135,9 +135,15 @@ The dev app includes a browser/device harness for interaction work:
 
 ## Release Truth
 
-The supported consumer path today is the published npm package.
+The supported consumer paths are the bazel-registry graph and the
+registry-named git tag archive (see the Install section's retirement notice);
+the npm channel is retired at 0.3.0.
 
-This repo also carries Bazel metadata because the broader package ecosystem around it uses Bazel package targets and registry generation. That standalone Bazel surface is being tightened up, but the release metadata in this repo is expected to stay aligned with the published package either way.
+This repo carries Bazel metadata as a first-class release surface: `//:pkg`
+is the publishable package, and the bazel-registry entry (byte-identical
+`MODULE.bazel` snapshot + sha256-pinned `source.json`) is part of every
+release. `docs/release-flow.md` documents the full ritual; the release
+metadata gate keeps package.json, MODULE.bazel, and BUILD.bazel aligned.
 
 ## License
 
