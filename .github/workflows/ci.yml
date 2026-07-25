@@ -31,6 +31,6 @@ jobs:
       bazel_targets: "//:pkg //:package_consumer_check //:bundle_size_check //:typecheck //:test"
       package_dir: ./bazel-bin/pkg
       npm_access: public
-      github_package_name: "@tinyland-inc/tinyvectors"
+      # GitHub Packages channel retired 2026-07-25 (TIN-3165); github_package_name intentionally unset.
       dry_run: true
     secrets: inherit
